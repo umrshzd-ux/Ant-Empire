@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>Ant Empire: Idle Colony</title>
 <style>
+  /* ===== FULL POLISHED CSS (unchanged) ===== */
   html, body { margin: 0; padding: 0; overflow: hidden; width: 100%; height: 100%; background: #1a1208; font-family: -apple-system, Roboto, "Segoe UI", sans-serif; touch-action: none; user-select: none; -webkit-user-select: none; }
   #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; will-change: transform; }
   canvas { display: block; }
@@ -204,60 +205,6 @@
 <div id="ascension-shop-panel"><div style="color:#ffaa00;font-weight:700;text-align:center;">⬆️ Ascension Shop</div><div id="ascension-shop-list"></div></div>
 <div id="achievements-panel"><div style="color:#ffd27a;font-weight:700;text-align:center;">🏆 Achievements</div><div id="ach-list"></div></div>
 
-<script>
-(function(){
-  var loadMsg=document.getElementById('loading-msg'),loadBar=document.getElementById('progress-fill');
-  function upd(m,p){if(loadMsg)loadMsg.textContent=m;if(loadBar)loadBar.style.width=(p||0)+'%';}
-  upd('Loading Three.js...',10);
-
-  var timeout = setTimeout(function(){
-    if(typeof THREE==='undefined'){
-      document.getElementById('loading').innerHTML =
-        '<div class="title">⚠️ Failed to load</div>'+
-        '<div style="color:#ffaaaa;max-width:280px;text-align:center;">'+
-        'Three.js could not be loaded.<br>'+
-        'Check that js/three.min.js exists and your internet works.'+
-        '</div>'+
-        '<button onclick="location.reload()" style="margin-top:10px;padding:8px 16px;background:#d6a85a;border:none;border-radius:8px;color:#1a1208;font-weight:700;cursor:pointer;">Retry</button>';
-    }
-  },12000);
-
-  var t=0;
-  function chk(){
-    if(typeof THREE!=='undefined'){
-      clearTimeout(timeout);
-      upd('Starting...',95);
-      setTimeout(function(){
-        var ld=document.getElementById('loading');
-        if(ld)ld.style.display='none';
-        try{ startGame(); }
-        catch(e){
-          var ld2=document.getElementById('loading');
-          if(ld2)ld2.style.display='flex';
-          ld2.innerHTML =
-            '<div class="title">⚠️ Startup Error</div>'+
-            '<div style="color:#ffaaaa;max-width:280px;text-align:center;font-size:12px;">'+
-            e.toString()+'<br>Check console for details.'+
-            '</div>'+
-            '<button onclick="location.reload()" style="margin-top:10px;padding:8px 16px;background:#d6a85a;border:none;border-radius:8px;color:#1a1208;font-weight:700;cursor:pointer;">Retry</button>';
-        }
-      },200);
-      return;
-    }
-    t++;
-    if(t>120){
-      clearTimeout(timeout);
-      document.getElementById('loading').innerHTML =
-        '<div class="title">⚠️ Timeout</div><div>Three.js not detected. Reload.</div>'+
-        '<button onclick="location.reload()" style="margin-top:10px;padding:8px 16px;background:#d6a85a;border:none;border-radius:8px;color:#1a1208;font-weight:700;cursor:pointer;">Retry</button>';
-      return;
-    }
-    setTimeout(chk,100);
-  }
-  chk();
-})();
-</script>
-
 <script src="js/three.min.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/config.js"></script>
@@ -273,5 +220,45 @@
 <script src="js/shop.js"></script>
 <script src="js/upgrades.js"></script>
 <script src="js/main.js"></script>
+
+<script>
+  // Game bootstrap – runs after all scripts are loaded
+  (function(){
+    var ld = document.getElementById('loading');
+    var bar = document.getElementById('progress-fill');
+    var msg = document.getElementById('loading-msg');
+    
+    if (typeof THREE === 'undefined') {
+      ld.innerHTML = '<div class="title">⚠️ Failed to load</div>'+
+        '<div style="color:#ffaaaa;max-width:280px;text-align:center;">Three.js could not be loaded.<br>Check that js/three.min.js exists and your internet works.</div>'+
+        '<button onclick="location.reload()" style="margin-top:10px;padding:8px 16px;background:#d6a85a;border:none;border-radius:8px;color:#1a1208;font-weight:700;cursor:pointer;">Retry</button>';
+      return;
+    }
+    
+    if (typeof startGame !== 'function') {
+      ld.innerHTML = '<div class="title">⚠️ Startup Error</div>'+
+        '<div style="color:#ffaaaa;">startGame is not defined. Check js/main.js</div>'+
+        '<button onclick="location.reload()" style="margin-top:10px;padding:8px 16px;background:#d6a85a;border:none;border-radius:8px;color:#1a1208;font-weight:700;cursor:pointer;">Retry</button>';
+      return;
+    }
+    
+    // Update loading bar to full
+    if (msg) msg.textContent = 'Starting...';
+    if (bar) bar.style.width = '100%';
+    
+    // Hide loading screen and start the game
+    try {
+      if (ld) ld.style.display = 'none';
+      startGame();
+    } catch(e) {
+      if (ld) ld.style.display = 'flex';
+      ld.innerHTML = '<div class="title">⚠️ Startup Error</div>'+
+        '<div style="color:#ffaaaa;max-width:280px;text-align:center;font-size:12px;">'+
+        e.toString()+'<br>Check console for details.'+
+        '</div>'+
+        '<button onclick="location.reload()" style="margin-top:10px;padding:8px 16px;background:#d6a85a;border:none;border-radius:8px;color:#1a1208;font-weight:700;cursor:pointer;">Retry</button>';
+    }
+  })();
+</script>
 </body>
-      </html>                                                         
+  </html>
