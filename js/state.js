@@ -1,0 +1,293 @@
+// ===== STATE, SAVE/LOAD, AND DYNAMIC RECALCULATIONS =====
+
+// Save Manager
+var SaveManager = {};
+(function(SM) {
+  var SAVE_KEYS = ['antEmpire_slot_0', 'antEmpire_slot_1', 'antEmpire_slot_2'];
+  SM.getSlotMeta = function(slot) {
+    try {
+      var r = localStorage.getItem(SAVE_KEYS[slot]);
+      if (!r) return null;
+      var d = JSON.parse(r);
+      return {
+        slot: slot,
+        name: d.colonyName || ('Colony ' + (slot + 1)),
+        level: d.level || 1,
+        prestige: d.prestigeCount || 0,
+        ascension: d.ascensionCount || 0,
+        lastSaved: d.lastSaveTime || 0,
+        hasData: true
+      };
+    } catch(e) { return null; }
+  };
+  SM.getAllSlots = function() {
+    var slots = [];
+    for (var i = 0; i < 3; i++) {
+      var m = SM.getSlotMeta(i);
+      slots.push(m || { slot: i, name: 'Empty', level: 0, prestige: 0, ascension: 0, lastSaved: 0, hasData: false });
+    }
+    return slots;
+  };
+  SM.saveGame = function(slot, data) {
+    data.colonyName = data.colonyName || ('Colony ' + (slot + 1));
+    data.lastSaveTime = Date.now();
+    data.slot = slot;
+    try { localStorage.setItem(SAVE_KEYS[slot], JSON.stringify(data)); } catch(e) {}
+    return true;
+  };
+  SM.loadGame = function(slot) {
+    try {
+      var r = localStorage.getItem(SAVE_KEYS[slot]);
+      return r ? JSON.parse(r) : null;
+    } catch(e) { return null; }
+  };
+  SM.deleteSlot = function(slot) {
+    try { localStorage.removeItem(SAVE_KEYS[slot]); } catch(e) {}
+    return true;
+  };
+  SM.getLastSlot = function() {
+    var best = -1, bestTime = 0;
+    for (var i = 0; i < 3; i++) {
+      var m = SM.getSlotMeta(i);
+      if (m && m.hasData && m.lastSaved > bestTime) { bestTime = m.lastSaved; best = i; }
+    }
+    return best;
+  };
+})(SaveManager);
+
+// Core state object
+var currentSlot = 0;
+var state = {
+  colonyName: "Colony 1", food: 60, gems: 0, foodCap: 60, level: 1, xp: 0, xpToNext: 40, eggs: 0,
+  eggLayTime: 10, hatchTime: 10,
+  workerCount: 4, soldierCount: 0, scoutCount: 0, lastTime: 0, lastSaveTime: 0,
+  chambers: { foodStorage: { count: 0, bonusCap: 0 }, nursery: { count: 0, hatchReduction: 0 },
+              soldier: { count: 0 }, research: { count: 0 }, scout: { count: 0 } },
+  deadSoldiers: 0, soldierRespawnTimer: 0,
+  upgrades: { soldierDamage: 0, workerSpeed: 0, eggLayTime: 0, foodCap: 0 },
+  gemUpgrades: { goldenEgg: false, soldierArmor: false, queenBless: false, scoutMap: false, goldenSkin: false },
+  expansionTrips: 0, unlockedZones: 0,
+  rallyActive: false, rallyTimer: 0, rallyCooldown: 0,
+  waveActive: false, waveTimer: 35, waveSpidersRemaining: 0,
+  surgeActive: false, surgeTimer: 0,
+  eventActive: false, eventTimer: 0,
+  weatherActive: false, weatherTimer: 0, weatherType: null, weatherTimeLeft: 0,
+  isNight: false, rareAntCount: 0, nestEvolutionLevel: 0,
+  totalHatched: 0, totalKills: 0, totalGemsEarned: 0,
+  achievementsClaimed: {},
+  dailyStreak: 0, lastLoginDay: "", earlyGameBoost: 300,
+  survivedNight: 0, rallyUses: 0, surgesCollected: 0, virtualWorkers: 0,
+  evolution: { worker: 0, soldier: 0, scout: 0 },
+  bossActive: false, bossTimer: 0, bossHealth: 0, bossMaxHealth: 0, currentBoss: null, bossKills: 0, bossType: null,
+  prestigeCount: 0, prestigePoints: 0,
+  prestigeUpgrades: { ppFood: 0, ppSpeed: 0, ppHatch: 0, ppCap: 0, ppGem: 0, ppBoss: 0 },
+  prestigeFoodBonus: 0,
+  currentZone: "forest", unlockedZonesList: ["forest"], workerRebalanceTimer: 300,
+  preWeatherZone: null, preWeatherBg: null, preWeatherFog: null,
+  speedBoostTimer: 0, beetleKills: 0, waspKills: 0, tutorialsShown: {}, lastSaveTime: 0,
+  queenClicks: 0, prestigeStartTime: 0, prestigeStartLevel: 0,
+  dailyChallengeDate: "", dailyChallengeIds: [],
+  dailyProgress: { hatch5: 0, kill8: 0, food300: 0, rally2: 0, boss1: 0, zone1: 0, upgrade1: 0, build1: 0, rare1: 0, night1: 0 },
+  lifetimeStats: { totalFood: 0, totalHatched: 0, totalKills: 0, totalBossKills: 0, totalPrestiges: 0, totalPlayTime: 0, totalGems: 0, totalRallies: 0, totalSurges: 0, totalNights: 0, fastestPrestige: 0 },
+  ascensionCount: 0, ascensionPoints: 0,
+  ascensionUpgrades: { goldenQueen: 0, eternalHatch: 0, monarchMight: 0, elderWisdom: 0 },
+  caveBossKills: 0, swampBossKills: 0, mountainBossKills: 0,
+  hasAscended: false
+};
+var queenScale = BAL.queenBaseScale;
+state.lastTime = performance.now();
+state.lastSaveTime = Date.now();
+state.foodCap = BAL.baseFoodCap;
+state.eggLayTime = BAL.baseEggLayTime;
+state.surgeTimer = BAL.surgeIntervalMin + Math.random() * (BAL.surgeIntervalMax - BAL.surgeIntervalMin);
+state.eventTimer = BAL.eventIntervalMin + Math.random() * (BAL.eventIntervalMax - BAL.eventIntervalMin);
+state.weatherTimer = BAL.weatherIntervalMin + Math.random() * (BAL.weatherIntervalMax - BAL.weatherIntervalMin);
+state.bossTimer = BAL.bossIntervalMin + Math.random() * (BAL.bossIntervalMax - BAL.bossIntervalMin);
+state.xpToNext = Math.floor(40 * Math.pow(1.15, state.level - 1));
+
+// Achievement validation
+function validateAchievements() {
+  for (var i = 0; i < ACHIEVEMENTS.length; i++) {
+    var ach = ACHIEVEMENTS[i];
+    var claimed = state.achievementsClaimed[ach.id];
+    if (claimed !== undefined) {
+      var num = Number(claimed);
+      if (isNaN(num)) num = 0;
+      num = Math.floor(num);
+      if (num < 0) num = 0;
+      if (num > ach.tiers.length) num = ach.tiers.length;
+      state.achievementsClaimed[ach.id] = num;
+    } else {
+      state.achievementsClaimed[ach.id] = 0;
+    }
+  }
+}
+
+// --- Dynamic recalculations ---
+function recalculateHatchTime() {
+  var base = BAL.baseHatchTime;
+  if (state.prestigeUpgrades.ppHatch) base -= state.prestigeUpgrades.ppHatch;
+  if (state.evolution.worker >= 3) base -= EVOLUTION_TREE.worker.tiers[2].effect.hatchReduction;
+  base -= state.chambers.nursery.hatchReduction;
+  if (state.ascensionUpgrades.eternalHatch > 0) base = 0;
+  state.hatchTime = Math.max(0, base);
+}
+function updateEggLayTime() {
+  var extra = Math.max(0, state.workerCount - 4);
+  var blessing = state.gemUpgrades.queenBless ? 3 : 0;
+  var baseTime = state.earlyGameBoost > 0 ? BAL.baseEggLayTime * BAL.earlyGameEggMultiplier : BAL.baseEggLayTime;
+  state.eggLayTime = Math.max(2, baseTime + extra * BAL.eggLayTimePerWorker - state.upgrades.eggLayTime * UPGRADES.eggLayTime.effect - blessing);
+}
+function recalculateFoodCap() {
+  state.foodCap = BAL.baseFoodCap + state.chambers.foodStorage.bonusCap + state.upgrades.foodCap * UPGRADES.foodCap.effect + (state.level - 1) * 25 + (state.prestigeUpgrades.ppCap || 0) * 50;
+}
+function getUpgradeCost(type) {
+  var upg = UPGRADES[type];
+  return Math.floor(upg.baseCost * Math.pow(upg.costMult, state.upgrades[type]));
+}
+function getEffectiveChamberCost(baseCost) {
+  if (state.evolution.worker >= 2) return Math.floor(baseCost * (1 - EVOLUTION_TREE.worker.tiers[1].effect.buildDiscount));
+  return baseCost;
+}
+function getStorageCost() {
+  return Math.floor(BAL.storageCost * (1 + state.chambers.foodStorage.count * BAL.storageCostMult));
+}
+function getEffectiveFoodPerTrip() {
+  var base = BAL.foodPerTrip + (state.prestigeUpgrades.ppFood || 0) + (state.prestigeFoodBonus || 0);
+  var mult = Math.pow(BAL.ascensionMultiplierFood, state.ascensionCount);
+  return base * mult;
+}
+function getEffectiveWorkerSpeed() {
+  var base = 1.6 * (1 + state.upgrades.workerSpeed * UPGRADES.workerSpeed.effect);
+  if (state.prestigeUpgrades.ppSpeed) base *= 1 + state.prestigeUpgrades.ppSpeed * 0.1;
+  if (state.speedBoostTimer > 0) base *= 2;
+  if (state.ascensionUpgrades.goldenQueen > 0) base *= 2;
+  return base;
+}
+function getEffectiveScoutSpeed() {
+  var base = 1.2;
+  if (state.evolution.scout >= 1) base += EVOLUTION_TREE.scout.tiers[0].effect.speedBonus;
+  if (state.prestigeUpgrades.ppSpeed) base *= 1 + state.prestigeUpgrades.ppSpeed * 0.1;
+  if (state.ascensionUpgrades.goldenQueen > 0) base *= 2;
+  return base;
+}
+function getEffectiveSoldierDamage() {
+  var base = BAL.soldierDamage + state.upgrades.soldierDamage * UPGRADES.soldierDamage.effect;
+  if (state.evolution.soldier >= 2) base += EVOLUTION_TREE.soldier.tiers[1].effect.damageBonus;
+  var mult = Math.pow(BAL.ascensionMultiplierDamage, state.ascensionCount);
+  return base * mult;
+}
+function getEffectiveSoldierMaxHealth() {
+  var base = BAL.soldierHealth + (state.gemUpgrades.soldierArmor ? 15 : 0);
+  if (state.evolution.soldier >= 1) base += EVOLUTION_TREE.soldier.tiers[0].effect.healthBonus;
+  return base;
+}
+function getEffectiveGuardRadius() {
+  var base = BAL.spiderGuardRadius;
+  if (state.evolution.soldier >= 3) base += EVOLUTION_TREE.soldier.tiers[2].effect.guardRadiusBonus;
+  return base;
+}
+function getEffectiveGemChance() {
+  var base = BAL.scoutGemChance + (state.prestigeUpgrades.ppGem || 0) * 0.1;
+  if (state.evolution.scout >= 2) base += EVOLUTION_TREE.scout.tiers[1].effect.gemChanceBonus;
+  var mult = Math.pow(BAL.ascensionMultiplierGem, state.ascensionCount);
+  return base * mult;
+}
+function getCurrentZoneConfig() {
+  var cfg = ZONE_CONFIG[state.currentZone];
+  if (!cfg) return ZONE_CONFIG.forest;
+  if (cfg.prestigeReq && state.prestigeCount < cfg.prestigeReq) return ZONE_CONFIG.forest;
+  return cfg;
+}
+
+// Temporary state cleanup (prestige/ascension)
+function resetWeatherAndBoosts() {
+  state.speedBoostTimer = 0;
+  state.weatherActive = false;
+  state.weatherTimeLeft = 0;
+  state.weatherType = null;
+  state.isNight = false;
+  for (var ri = 0; ri < rainDrops.length; ri++) rainDrops[ri].visible = false;
+  for (var mi = 0; mi < mushroomMeshes.length; mi++) mushroomMeshes[mi].visible = false;
+  for (var mi = 0; mi < mushroomLights.length; mi++) { mushroomLights[mi].visible = false; mushroomLights[mi].intensity = 0; }
+  if (typeof sLight !== 'undefined') sLight.intensity = 1.3;
+  if (typeof hLight !== 'undefined') hLight.intensity = 1;
+}
+
+// Save / Load helpers
+function saveGame() {
+  if (currentSlot < 0 || currentSlot > 2) return;
+  state.lastSaveTime = Date.now();
+  SaveManager.saveGame(currentSlot, state);
+}
+function loadGameData(data) {
+  if (!data) return;
+  var nk = ["food","gems","foodCap","level","xp","xpToNext","eggs","workerCount","soldierCount","scoutCount","deadSoldiers","expansionTrips","unlockedZones","rareAntCount","nestEvolutionLevel","totalHatched","totalKills","totalGemsEarned","dailyStreak","earlyGameBoost","survivedNight","rallyUses","surgesCollected","virtualWorkers","bossKills","bossTimer","beetleKills","waspKills","prestigeCount","prestigePoints","colonyName","queenClicks","prestigeStartTime","prestigeStartLevel","prestigeFoodBonus"];
+  for (var i = 0; i < nk.length; i++) { var k = nk[i]; if (data[k] !== undefined) state[k] = data[k]; }
+  if (data.chambers) state.chambers = data.chambers;
+  if (data.upgrades) state.upgrades = data.upgrades;
+  if (data.gemUpgrades) state.gemUpgrades = data.gemUpgrades;
+  if (data.achievementsClaimed) {
+    var migrated = {};
+    for (var key in data.achievementsClaimed) {
+      if (typeof data.achievementsClaimed[key] === 'boolean') migrated[key] = data.achievementsClaimed[key] ? 1 : 0;
+      else migrated[key] = data.achievementsClaimed[key];
+    }
+    state.achievementsClaimed = migrated;
+  }
+  var oldToNew = { hatch10: "hatch", kill10: "spider", level5: "level", food1k: "storage", hatch50: "hatch", kill50: "spider", level15: "level", allChambers: "builder", hatch100: "hatch", level30: "level", rare3: "rare", garden: "explorer", nightOwl: "night", speedDemon: "speed", surgeMaster: "surge", gem20: "gem", boss1: "boss", prestige1: "prestige" };
+  for (var oldKey in oldToNew) {
+    var newKey = oldToNew[oldKey];
+    if (state.achievementsClaimed[oldKey] && !state.achievementsClaimed[newKey]) {
+      state.achievementsClaimed[newKey] = state.achievementsClaimed[oldKey];
+      delete state.achievementsClaimed[oldKey];
+    }
+  }
+  validateAchievements();
+  if (data.queenScale !== undefined) queenScale = data.queenScale;
+  if (data.lastLoginDay !== undefined) state.lastLoginDay = data.lastLoginDay;
+  if (data.lastSaveTime) state.lastSaveTime = data.lastSaveTime;
+  if (data.evolution) state.evolution = data.evolution;
+  if (data.prestigeUpgrades) state.prestigeUpgrades = data.prestigeUpgrades;
+  if (data.currentZone) state.currentZone = data.currentZone;
+  if (data.unlockedZonesList) state.unlockedZonesList = data.unlockedZonesList;
+  if (data.bossTimer !== undefined) state.bossTimer = data.bossTimer;
+  if (data.tutorialsShown) state.tutorialsShown = data.tutorialsShown;
+  if (data.lifetimeStats) state.lifetimeStats = data.lifetimeStats;
+  if (data.dailyChallengeDate) state.dailyChallengeDate = data.dailyChallengeDate;
+  if (data.dailyChallengeIds) state.dailyChallengeIds = data.dailyChallengeIds;
+  if (data.dailyProgress) state.dailyProgress = data.dailyProgress;
+  if (data.ascensionCount !== undefined) state.ascensionCount = data.ascensionCount;
+  if (data.ascensionPoints !== undefined) state.ascensionPoints = data.ascensionPoints;
+  if (data.ascensionUpgrades) state.ascensionUpgrades = data.ascensionUpgrades;
+  if (data.hasAscended !== undefined) state.hasAscended = data.hasAscended;
+  if (data.caveBossKills !== undefined) state.caveBossKills = data.caveBossKills;
+  if (data.swampBossKills !== undefined) state.swampBossKills = data.swampBossKills;
+  if (data.mountainBossKills !== undefined) state.mountainBossKills = data.mountainBossKills;
+  if (data.bossKillsByType) state.bossKillsByType = data.bossKillsByType;
+  state.xpToNext = Math.floor(40 * Math.pow(1.15, state.level - 1));
+  recalculateHatchTime();
+  updateEggLayTime();
+  recalculateFoodCap();
+}
+
+// Core resource functions (called from many places, defined here for visibility)
+function addFood(amount, wp) {
+  amount = Math.floor(amount);
+  if (amount <= 0) return;
+  state.food = Math.min(state.food + amount, state.foodCap);
+  state.lifetimeStats.totalFood = (state.lifetimeStats.totalFood || 0) + amount;
+  updateDailyProgress('food300', amount);
+  if (wp) {
+    spawnFloater("+" + amount + "🌾", window.innerWidth/2, window.innerHeight/2, "#ffd27a");
+    emitParticles(wp, 4, 0xffd27a, 0.04, 0.5, 0.3);
+  }
+}
+function addGems(amount) {
+  amount = Math.floor(amount);
+  if (amount <= 0) return;
+  state.gems += amount;
+  state.totalGemsEarned += amount;
+  state.lifetimeStats.totalGems = (state.lifetimeStats.totalGems || 0) + amount;
+  showToast("+" + amount + "💎");
+  }
