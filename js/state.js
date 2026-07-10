@@ -1,6 +1,5 @@
 // ===== STATE, SAVE/LOAD, AND DYNAMIC RECALCULATIONS =====
 
-// Save Manager
 var SaveManager = {};
 (function(SM) {
   var SAVE_KEYS = ['antEmpire_slot_0', 'antEmpire_slot_1', 'antEmpire_slot_2'];
@@ -55,7 +54,6 @@ var SaveManager = {};
   };
 })(SaveManager);
 
-// Core state object
 var currentSlot = 0;
 var state = {
   colonyName: "Colony 1", food: 60, gems: 0, foodCap: 60, level: 1, xp: 0, xpToNext: 40, eggs: 0,
@@ -104,6 +102,53 @@ state.eventTimer = BAL.eventIntervalMin + Math.random() * (BAL.eventIntervalMax 
 state.weatherTimer = BAL.weatherIntervalMin + Math.random() * (BAL.weatherIntervalMax - BAL.weatherIntervalMin);
 state.bossTimer = BAL.bossIntervalMin + Math.random() * (BAL.bossIntervalMax - BAL.bossIntervalMin);
 state.xpToNext = Math.floor(40 * Math.pow(1.15, state.level - 1));
+
+// Reset state to fresh default (used when starting a new colony)
+function resetStateToDefault(slot) {
+  state.colonyName = "Colony " + (slot + 1);
+  state.food = BAL.baseFoodCap; state.gems = 0; state.foodCap = BAL.baseFoodCap;
+  state.level = 1; state.xp = 0; state.xpToNext = Math.floor(40 * Math.pow(1.15, 0));
+  state.eggs = 0; state.workerCount = 4; state.soldierCount = 0; state.scoutCount = 0;
+  state.lastTime = performance.now(); state.lastSaveTime = Date.now();
+  state.chambers = { foodStorage: { count: 0, bonusCap: 0 }, nursery: { count: 0, hatchReduction: 0 },
+                     soldier: { count: 0 }, research: { count: 0 }, scout: { count: 0 } };
+  state.deadSoldiers = 0; state.soldierRespawnTimer = 0;
+  state.upgrades = { soldierDamage: 0, workerSpeed: 0, eggLayTime: 0, foodCap: 0 };
+  state.gemUpgrades = { goldenEgg: false, soldierArmor: false, queenBless: false, scoutMap: false, goldenSkin: false };
+  state.expansionTrips = 0; state.unlockedZones = 0;
+  state.rallyActive = false; state.rallyTimer = 0; state.rallyCooldown = 0;
+  state.waveActive = false; state.waveTimer = 35; state.waveSpidersRemaining = 0;
+  state.surgeActive = false; state.surgeTimer = BAL.surgeIntervalMin + Math.random() * (BAL.surgeIntervalMax - BAL.surgeIntervalMin);
+  state.eventActive = false; state.eventTimer = BAL.eventIntervalMin + Math.random() * (BAL.eventIntervalMax - BAL.eventIntervalMin);
+  state.weatherActive = false; state.weatherTimer = BAL.weatherIntervalMin + Math.random() * (BAL.weatherIntervalMax - BAL.weatherIntervalMin);
+  state.weatherType = null; state.weatherTimeLeft = 0;
+  state.isNight = false; state.rareAntCount = 0; state.nestEvolutionLevel = 0;
+  state.totalHatched = 0; state.totalKills = 0; state.totalGemsEarned = 0;
+  state.achievementsClaimed = {};
+  state.dailyStreak = 0; state.lastLoginDay = ""; state.earlyGameBoost = BAL.earlyGameBoostDuration;
+  state.survivedNight = 0; state.rallyUses = 0; state.surgesCollected = 0; state.virtualWorkers = 0;
+  state.evolution = { worker: 0, soldier: 0, scout: 0 };
+  state.bossActive = false; state.bossTimer = BAL.bossIntervalMin + Math.random() * (BAL.bossIntervalMax - BAL.bossIntervalMin);
+  state.bossHealth = 0; state.bossMaxHealth = 0; state.currentBoss = null; state.bossKills = 0; state.bossType = null;
+  state.prestigeCount = 0; state.prestigePoints = 0;
+  state.prestigeUpgrades = { ppFood: 0, ppSpeed: 0, ppHatch: 0, ppCap: 0, ppGem: 0, ppBoss: 0 };
+  state.prestigeFoodBonus = 0;
+  state.currentZone = "forest"; state.unlockedZonesList = ["forest"];
+  state.preWeatherZone = null; state.preWeatherBg = null; state.preWeatherFog = null;
+  state.speedBoostTimer = 0; state.beetleKills = 0; state.waspKills = 0; state.tutorialsShown = {};
+  state.queenClicks = 0; state.prestigeStartTime = 0; state.prestigeStartLevel = 0;
+  state.dailyChallengeDate = ""; state.dailyChallengeIds = [];
+  state.dailyProgress = { hatch5: 0, kill8: 0, food300: 0, rally2: 0, boss1: 0, zone1: 0, upgrade1: 0, build1: 0, rare1: 0, night1: 0 };
+  state.lifetimeStats = { totalFood: 0, totalHatched: 0, totalKills: 0, totalBossKills: 0, totalPrestiges: 0, totalPlayTime: 0, totalGems: 0, totalRallies: 0, totalSurges: 0, totalNights: 0, fastestPrestige: 0 };
+  state.ascensionCount = 0; state.ascensionPoints = 0;
+  state.ascensionUpgrades = { goldenQueen: 0, eternalHatch: 0, monarchMight: 0, elderWisdom: 0 };
+  state.caveBossKills = 0; state.swampBossKills = 0; state.mountainBossKills = 0;
+  state.hasAscended = false;
+  queenScale = BAL.queenBaseScale;
+  recalculateHatchTime();
+  updateEggLayTime();
+  recalculateFoodCap();
+}
 
 // Achievement validation
 function validateAchievements() {
@@ -203,10 +248,7 @@ function getCurrentZoneConfig() {
 // Temporary state cleanup (prestige/ascension)
 function resetWeatherAndBoosts() {
   state.speedBoostTimer = 0;
-  state.weatherActive = false;
-  state.weatherTimeLeft = 0;
-  state.weatherType = null;
-  state.isNight = false;
+  state.weatherActive = false; state.weatherTimeLeft = 0; state.weatherType = null; state.isNight = false;
   for (var ri = 0; ri < rainDrops.length; ri++) rainDrops[ri].visible = false;
   for (var mi = 0; mi < mushroomMeshes.length; mi++) mushroomMeshes[mi].visible = false;
   for (var mi = 0; mi < mushroomLights.length; mi++) { mushroomLights[mi].visible = false; mushroomLights[mi].intensity = 0; }
@@ -271,7 +313,7 @@ function loadGameData(data) {
   recalculateFoodCap();
 }
 
-// Core resource functions (called from many places, defined here for visibility)
+// Core resource functions
 function addFood(amount, wp) {
   amount = Math.floor(amount);
   if (amount <= 0) return;
@@ -290,4 +332,4 @@ function addGems(amount) {
   state.totalGemsEarned += amount;
   state.lifetimeStats.totalGems = (state.lifetimeStats.totalGems || 0) + amount;
   showToast("+" + amount + "💎");
-  }
+}
