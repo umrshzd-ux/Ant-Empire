@@ -44,7 +44,7 @@ function buildTerrain() {
   var surfaceMat = new THREE.MeshStandardMaterial({ map: grassTex, roughness: 0.9, color: 0xffffff, side: THREE.DoubleSide });
   var surf = new THREE.Mesh(new THREE.PlaneGeometry(SW, SD), surfaceMat);
   surf.rotation.x = -Math.PI / 2;
-  surf.position.set(0, GTY + 0.01, 0); // slightly raised to avoid z-fight
+  surf.position.set(0, GTY + 0.01, 0);
   surf.receiveShadow = true;
   scene.add(surf);
 
@@ -157,9 +157,10 @@ function buildTerrain() {
   }
 }
 
+// Mushrooms & night effects
 var mushroomMeshes = [], mushroomLights = [];
 function initMushrooms() {
-  for (var mi = 0; mi < 15; mi++) {
+  for (var mi = 0; mi < 10; mi++) {
     var mx = -SW / 2 + 4 + Math.random() * (SW - 8);
     var mz = -SD / 2 + 4 + Math.random() * (SD - 8);
     if (Math.abs(mx - TX) > 5 || Math.abs(mz - TCZ) > 5) createMushroom(mx, mz);
@@ -188,9 +189,10 @@ function createMushroom(x, z) {
   mushroomLights.push(light);
 }
 
+// Rain drops
 var rainDrops = [];
 function initRainDrops() {
-  for (var ri = 0; ri < 300; ri++) {
+  for (var ri = 0; ri < 150; ri++) {
     var drop = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.3, 3), new THREE.MeshStandardMaterial({ color: 0xaaccff, roughness: 0.5, emissive: 0x334466, emissiveIntensity: 0.2 }));
     drop.visible = false;
     drop.position.set(-SW / 2 + Math.random() * SW, Math.random() * 15, -SD / 2 + Math.random() * SD);
@@ -200,6 +202,7 @@ function initRainDrops() {
   }
 }
 
+// Particle system
 var particlePool = [];
 function initParticles() { for (var pi = 0; pi < 200; pi++) particlePool.push(createParticle()); }
 function createParticle() {
@@ -241,6 +244,8 @@ function updateParticles(dt) {
     if (p.life >= p.maxLife) { p.active = false; p.mesh.visible = false; }
   }
 }
+
+// Mesh disposal helper
 function disposeMesh(mesh) {
   if (!mesh) return;
   mesh.traverse(function(child) {
@@ -252,6 +257,8 @@ function disposeMesh(mesh) {
     }
   });
 }
+
+// Food station visuals
 function initFoodStations() {
   for (var fi = 0; fi < FS.length; fi++) {
     var st = FS[fi];
