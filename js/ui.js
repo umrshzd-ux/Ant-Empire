@@ -1,3 +1,5 @@
+// ===== HUD, TOASTS, FLOATERS, MENUS, ACHIEVEMENTS, DAILY, STATS, PRESTIGE/ASCENSION UI =====
+
 var elFood, elFoodCap, elGems, elLevel, elAnts, elEggs, elWaveTimer, elEventTimer, elBossTimer, elPrestige;
 var toastEl, floatersEl;
 var buildPanel, upgradePanel, shopPanel, achPanel, evoPanel, ppPanel, ascPanel;
@@ -114,6 +116,7 @@ function updateEventTimer() {
   }
 }
 function updateBossTimer() {
+  if (!elBossTimer) return;   // safety check
   if (state.bossActive) {
     elBossTimer.textContent = "💀Boss!";
     elBossTimer.parentElement.style.borderColor = "#cc0000";
@@ -819,4 +822,4 @@ function setupButtons() {
   if (state.prestigeCount >= BAL.ascendUnlockPrestige || state.ascensionCount > 0) { var ascBtn = document.getElementById("btn-ascension-shop"); if (ascBtn) ascBtn.style.display = "inline-block"; }
   for (var si = 0; si < shopBtns.length; si++) { var sid = shopBtns[si]; if (GEM_ITEMS[sid] && GEM_ITEMS[sid].oneTime && state.gemUpgrades[sid]) { var btn = document.getElementById("btn-shop-" + sid); if (btn) { btn.disabled = true; btn.textContent = "Owned"; } } }
   refreshUpgradeUI(); refreshAscensionShopUI();
-}
+    }
