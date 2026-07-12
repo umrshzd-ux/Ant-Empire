@@ -226,6 +226,7 @@ canvas { display: block; }
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   background: rgba(0,0,0,0.7); border-radius: 14px; display: flex;
   align-items: center; justify-content: center; font-size: 14px; color: #aaa;
+  pointer-events: none;   /* <-- FIX: allows clicks to pass through to the button */
 }
 
 /* ============================================================
@@ -308,7 +309,7 @@ canvas { display: block; }
   text-shadow: 0 2px 4px rgba(0,0,0,0.6); letter-spacing: 1px;
 }
 
-/* Save slots – premium card */
+/* Save slots – premium card, with delete button */
 .save-slot {
   width: 290px;
   background: linear-gradient(180deg, rgba(55,30,15,0.9), rgba(25,12,6,0.9));
@@ -342,6 +343,25 @@ canvas { display: block; }
 .save-slot .slot-name { font-size: 19px; font-weight: 800; color: #ffd27a; text-shadow: 0 1px 3px rgba(0,0,0,0.5); }
 .save-slot .slot-info { font-size: 13px; color: #bb9966; margin-top: 4px; }
 .save-slot .slot-empty { font-size: 16px; color: #777; font-style: italic; }
+
+/* Delete button inside save slot */
+.save-slot .delete-colony-btn {
+  background: rgba(255,80,80,0.15);
+  border: 1px solid rgba(255,100,100,0.6);
+  color: #ff6666;
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-left: auto;
+}
+.save-slot .delete-colony-btn:hover {
+  background: rgba(255,80,80,0.35);
+}
+.save-slot .delete-colony-btn:active {
+  transform: scale(0.95);
+}
 
 /* Menu buttons – 3D glossy */
 .menu-btn {
@@ -778,21 +798,21 @@ canvas { display: block; }
 })();
 </script>
 
-<script src="js/three.min.js?v=premium4"></script>
-<script src="js/audio.js?v=premium4"></script>
-<script src="js/config.js?v=premium4"></script>
-<script src="js/state.js?v=premium4"></script>
-<script src="js/terrain.js?v=premium4"></script>
-<script src="js/main.js?v=premium4"></script>
-<script src="js/camera.js?v=premium4"></script>
-<script src="js/chambers.js?v=premium4"></script>
-<script src="js/ants.js?v=premium4"></script>
-<script src="js/enemies.js?v=premium4"></script>
-<script src="js/combat.js?v=premium4"></script>
-<script src="js/abilities.js?v=premium4"></script>
-<script src="js/ui.js?v=premium4"></script>
-<script src="js/shop.js?v=premium4"></script>
-<script src="js/upgrades.js?v=premium4"></script>
+<script src="js/three.min.js?v=premium5"></script>
+<script src="js/audio.js?v=premium5"></script>
+<script src="js/config.js?v=premium5"></script>
+<script src="js/state.js?v=premium5"></script>
+<script src="js/terrain.js?v=premium5"></script>
+<script src="js/main.js?v=premium5"></script>
+<script src="js/camera.js?v=premium5"></script>
+<script src="js/chambers.js?v=premium5"></script>
+<script src="js/ants.js?v=premium5"></script>
+<script src="js/enemies.js?v=premium5"></script>
+<script src="js/combat.js?v=premium5"></script>
+<script src="js/abilities.js?v=premium5"></script>
+<script src="js/ui.js?v=premium5"></script>
+<script src="js/shop.js?v=premium5"></script>
+<script src="js/upgrades.js?v=premium5"></script>
 
 <script>
   window.onerror = function(msg, url, line) {
@@ -869,4 +889,4 @@ canvas { display: block; }
   })();
 </script>
 </body>
-       </html>
+                                                                                                                                  </html>
