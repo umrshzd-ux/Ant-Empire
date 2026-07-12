@@ -1,6 +1,8 @@
 // ===== HUD, TOASTS, FLOATERS, MENUS, ACHIEVEMENTS, DAILY, STATS, PRESTIGE/ASCENSION UI =====
 
-var elFood, elFoodCap, elGems, elAnts, elAlertCount, elAlertsPanel, elResourcesPanel, elMorePanel;
+var elFood, elFoodCap, elGems, elAnts, elAlertCount;
+var elAlertsPanel, elAlertsContent, elResourcesPanel;
+var elMorePanel;
 var toastEl, floatersEl;
 var buildPanel, upgradePanel, shopPanel, achPanel, evoPanel, ppPanel, ascPanel;
 var surgeBtn, eventBtn, summonBtn, rallyBtn, rallyOverlay;
@@ -12,6 +14,7 @@ function initDOMRefs() {
   elAnts = document.getElementById("ant-count");
   elAlertCount = document.getElementById("alert-count");
   elAlertsPanel = document.getElementById("alerts-panel");
+  elAlertsContent = document.getElementById("alerts-content");
   elResourcesPanel = document.getElementById("resources-panel");
   elMorePanel = document.getElementById("more-panel");
 
@@ -34,10 +37,23 @@ function initDOMRefs() {
 }
 initDOMRefs();
 
+// ---- Close panels on outside click ----
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#alerts-panel') && !e.target.closest('#alerts-pill')) {
+    elAlertsPanel.style.display = 'none';
+  }
+  if (!e.target.closest('#resources-panel') && !e.target.closest('#resources-pill')) {
+    elResourcesPanel.style.display = 'none';
+  }
+});
+
+// ---- Close buttons inside panels ----
+document.getElementById('alerts-close-btn').onclick = function() { elAlertsPanel.style.display = 'none'; };
+document.getElementById('resources-close-btn').onclick = function() { elResourcesPanel.style.display = 'none'; };
+
 function closeAllModals() {
   ['offline-modal', 'daily-modal', 'prestige-modal', 'ascend-modal', 'about-modal'].forEach(function(id) {
-    var el = document.getElementById(id);
-    if (el) el.style.display = 'none';
+    var el = document.getElementById(id); if (el) el.style.display = 'none';
   });
 }
 
@@ -52,11 +68,7 @@ function processToastQueue() {
   toastEl.style.transition = "none";
   void toastEl.offsetWidth;
   toastEl.style.transition = "opacity 0.3s ease";
-  setTimeout(function() {
-    toastEl.style.opacity = "0";
-    toastActive = false;
-    setTimeout(processToastQueue, 300);
-  }, 2200);
+  setTimeout(function() { toastEl.style.opacity = "0"; toastActive = false; setTimeout(processToastQueue, 300); }, 2200);
 }
 function showToast(msg) { toastQueue.push(msg); processToastQueue(); }
 
@@ -87,39 +99,23 @@ function spawnFloater(text, sx, sy, color) {
 // =============================================
 function updateAlertsPanel() {
   var alerts = [];
-  if (state.waveActive) {
-    alerts.push({ text: "⚠️ Wave in progress", color: "#ffaa00" });
-  } else {
-    var waveSec = Math.ceil(state.waveTimer);
-    alerts.push({ text: "Wave in " + waveSec + "s", color: "#ffaa00" });
-  }
-  if (state.eventActive) {
-    alerts.push({ text: "🎲 Event active", color: "#4488ff" });
-  } else {
-    var eventSec = Math.ceil(state.eventTimer);
-    if (eventSec <= 15) alerts.push({ text: "Event in " + eventSec + "s", color: "#4488ff" });
-  }
-  if (state.bossActive) {
-    alerts.push({ text: "💀 Boss fight!", color: "#cc0000" });
-  } else {
+  if (state.waveActive) alerts.push({ text: "⚠️ Wave in progress", color: "#ffaa00" });
+  else alerts.push({ text: "Wave in " + Math.ceil(state.waveTimer) + "s", color: "#ffaa00" });
+  if (state.eventActive) alerts.push({ text: "🎲 Event active", color: "#4488ff" });
+  else if (Math.ceil(state.eventTimer) <= 15) alerts.push({ text: "Event in " + Math.ceil(state.eventTimer) + "s", color: "#4488ff" });
+  if (state.bossActive) alerts.push({ text: "💀 Boss fight!", color: "#cc0000" });
+  else {
     var totalSec = Math.ceil(state.bossTimer);
-    if (totalSec <= 30) alerts.push({ text: "Boss in " + totalSec + "s", color: "#cc0000" });
-    else {
-      var mins = Math.floor(totalSec / 60);
-      var secs = totalSec % 60;
-      alerts.push({ text: "Boss in " + mins + "m " + (secs < 10 ? "0" : "") + secs + "s", color: "#cc0000" });
-    }
+    var mins = Math.floor(totalSec / 60), secs = totalSec % 60;
+    var display = mins > 0 ? mins + "m " + (secs < 10 ? "0" : "") + secs + "s" : secs + "s";
+    alerts.push({ text: "Boss in " + display, color: "#cc0000" });
   }
-
-  var count = alerts.length;
-  elAlertCount.textContent = count;
+  elAlertCount.textContent = alerts.length;
   if (elAlertsPanel.style.display === 'flex') {
     var html = '';
-    for (var i = 0; i < alerts.length; i++) {
-      html += '<div class="alert-item" style="color:' + alerts[i].color + ';">' + alerts[i].text + '</div>';
-    }
+    alerts.forEach(function(a) { html += '<div class="alert-item" style="color:' + a.color + ';">' + a.text + '</div>'; });
     if (alerts.length === 0) html = '<div class="alert-item" style="color:#aaa;">No alerts</div>';
-    elAlertsPanel.innerHTML = html;
+    elAlertsContent.innerHTML = html;
   }
 }
 
@@ -131,13 +127,8 @@ function updateBossTimer() { updateAlertsPanel(); }
 // Toggle alerts dropdown
 document.getElementById("alerts-pill").onclick = function() {
   AudioManager.sfx.buttonClick();
-  if (elAlertsPanel.style.display === 'flex') {
-    elAlertsPanel.style.display = 'none';
-  } else {
-    elResourcesPanel.style.display = 'none';
-    elAlertsPanel.style.display = 'flex';
-    updateAlertsPanel();
-  }
+  if (elAlertsPanel.style.display === 'flex') { elAlertsPanel.style.display = 'none'; }
+  else { elResourcesPanel.style.display = 'none'; elAlertsPanel.style.display = 'flex'; updateAlertsPanel(); }
 };
 
 // =============================================
@@ -154,13 +145,8 @@ function updateResourcesPopup() {
 
 document.getElementById("resources-pill").onclick = function() {
   AudioManager.sfx.buttonClick();
-  if (elResourcesPanel.style.display === 'flex') {
-    elResourcesPanel.style.display = 'none';
-  } else {
-    elAlertsPanel.style.display = 'none';
-    elResourcesPanel.style.display = 'flex';
-    updateResourcesPopup();
-  }
+  if (elResourcesPanel.style.display === 'flex') { elResourcesPanel.style.display = 'none'; }
+  else { elAlertsPanel.style.display = 'none'; elResourcesPanel.style.display = 'flex'; updateResourcesPopup(); }
 };
 
 // =============================================
@@ -172,7 +158,8 @@ function refreshHUD() {
   elGems.textContent = Math.floor(state.gems);
   elAnts.textContent = state.workerCount + state.soldierCount + state.scoutCount;
   document.getElementById('zone-display').textContent = ZONE_CONFIG[state.currentZone] ? ZONE_CONFIG[state.currentZone].label : '🌳Forest';
-  // The alerts badge is updated via updateAlertsPanel called from main loop
+  // Immediately update summon button visibility based on gems
+  if (typeof updateSummonButton === 'function') updateSummonButton();
 }
 
 // =============================================
@@ -934,6 +921,7 @@ function setupButtons() {
   document.getElementById("btn-close-about").onclick = function() { document.getElementById('about-modal').style.display = 'none'; };
   document.getElementById("toggle-sfx").onclick = function() { GameSettings.sfxOn = !GameSettings.sfxOn; AudioManager.setSfx(GameSettings.sfxOn); this.className = 'toggle-switch' + (GameSettings.sfxOn ? ' on' : ''); };
   document.getElementById("toggle-ambient").onclick = function() { GameSettings.ambientOn = !GameSettings.ambientOn; AudioManager.setAmbient(GameSettings.ambientOn); this.className = 'toggle-switch' + (GameSettings.ambientOn ? ' on' : ''); };
+  document.getElementById("toggle-music").onclick = function() { GameSettings.musicOn = !GameSettings.musicOn; AudioManager.setMusic(GameSettings.musicOn); this.className = 'toggle-switch' + (GameSettings.musicOn ? ' on' : ''); };
   document.getElementById("toggle-shake").onclick = function() { GameSettings.shakeOn = !GameSettings.shakeOn; localStorage.setItem('antEmpire_shake', GameSettings.shakeOn ? '1' : '0'); this.className = 'toggle-switch' + (GameSettings.shakeOn ? ' on' : ''); };
 
   // Show/hide buttons based on game state
@@ -954,4 +942,4 @@ function setupButtons() {
     }
   }
   refreshUpgradeUI(); refreshAscensionShopUI();
-      }
+}
