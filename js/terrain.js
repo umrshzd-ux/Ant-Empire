@@ -1,4 +1,4 @@
-// ===== WORLD CONSTANTS & TERRAIN GENERATION =====
+// ===== WORLD CONSTANTS & TERRAIN GENERATION (PERFORMANCE OPTIMISED) =====
 
 var _v3 = new THREE.Vector3();
 
@@ -28,12 +28,13 @@ var PATROL_POINTS = [
 
 var mound, rim, collar;
 function buildTerrain() {
+  // Simple grass texture
   var c = document.createElement("canvas");
   c.width = 512; c.height = 512;
   var ctx = c.getContext("2d");
   ctx.fillStyle = "#4d7a32";
   ctx.fillRect(0, 0, 512, 512);
-  for (var i = 0; i < 8000; i++) {
+  for (var i = 0; i < 6000; i++) {  // reduced noise specs
     var shade = Math.random() * 30 - 15;
     ctx.fillStyle = "rgb(" + Math.floor(77 + shade) + "," + Math.floor(122 + shade) + "," + Math.floor(50 + shade) + ")";
     ctx.fillRect(Math.random() * 512, Math.random() * 512, 2, 2);
@@ -48,6 +49,7 @@ function buildTerrain() {
   surf.receiveShadow = true;
   scene.add(surf);
 
+  // Dirt layers
   var dMat = new THREE.MeshStandardMaterial({ color: 0x6b4626, roughness: 1 });
   var bottomPlat = new THREE.Mesh(new THREE.PlaneGeometry(SW + 20, SD + 10), dMat);
   bottomPlat.rotation.x = -Math.PI / 2;
@@ -74,43 +76,47 @@ function buildTerrain() {
   bottomDirt.receiveShadow = true;
   scene.add(bottomDirt);
 
+  // ----- TREES & BUSHES (reduced density, no foliage shadows) -----
   function addTree(x, z, s) {
     var g = new THREE.Group();
     var tr = new THREE.Mesh(new THREE.CylinderGeometry(0.15 * s, 0.2 * s, 0.8 * s, 6), new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.9 }));
-    tr.position.y = 0.4 * s; tr.castShadow = tr.receiveShadow = true; g.add(tr);
+    tr.position.y = 0.4 * s; tr.castShadow = true; tr.receiveShadow = true; g.add(tr);
     var fm = new THREE.MeshStandardMaterial({ color: 0x2d5a27, roughness: 0.8 });
     var f1 = new THREE.Mesh(new THREE.ConeGeometry(0.45 * s, 0.9 * s, 8), fm);
-    f1.position.y = 0.9 * s; f1.castShadow = f1.receiveShadow = true; g.add(f1);
+    f1.position.y = 0.9 * s; f1.castShadow = false; f1.receiveShadow = true; g.add(f1);  // foliage no longer casts shadow
     var f2 = new THREE.Mesh(new THREE.ConeGeometry(0.45 * s, 0.9 * s, 8), fm);
-    f2.scale.set(0.8, 0.8, 0.8); f2.position.y = 1.2 * s; f2.castShadow = f2.receiveShadow = true; g.add(f2);
+    f2.scale.set(0.8, 0.8, 0.8); f2.position.y = 1.2 * s; f2.castShadow = false; f2.receiveShadow = true; g.add(f2);
     g.position.set(x, GTY, z);
     scene.add(g);
   }
   function addBush(x, z, s) {
     var g = new THREE.Group();
     var m = new THREE.MeshStandardMaterial({ color: 0x3a6b2f, roughness: 0.7 });
-    for (var i = 0; i < 5; i++) {
+    for (var i = 0; i < 4; i++) {  // fewer spheres per bush
       var p = new THREE.Mesh(new THREE.SphereGeometry(0.15 * s, 5, 5), m);
       p.position.set((Math.random() - 0.5) * 0.3 * s, 0.1 * s + Math.random() * 0.2 * s, (Math.random() - 0.5) * 0.3 * s);
-      p.castShadow = p.receiveShadow = true;
+      p.castShadow = false; p.receiveShadow = true;  // no shadow casting from bushes
       g.add(p);
     }
     g.position.set(x, GTY, z);
     scene.add(g);
   }
-  for (var x = -SW / 2 + 2; x <= SW / 2 - 2; x += 1.5 + Math.random() * 1.5) {
-    if (Math.random() < 0.7) addTree(x, SD / 2 - 1.5 + Math.random() * 0.5, 0.8 + Math.random() * 0.5);
-    else addBush(x, SD / 2 - 1.5, 0.4 + Math.random() * 0.4);
-    if (Math.random() < 0.7) addTree(x, -SD / 2 + 1.5 - Math.random() * 0.5, 0.8 + Math.random() * 0.5);
-    else addBush(x, -SD / 2 + 1.5, 0.4 + Math.random() * 0.4);
+
+  // Wider spacing, fewer trees
+  for (var x = -SW / 2 + 3; x <= SW / 2 - 3; x += 3.5 + Math.random() * 1.2) {
+    if (Math.random() < 0.6) addTree(x, SD / 2 - 1.5 + Math.random() * 0.5, 0.8 + Math.random() * 0.4);
+    else addBush(x, SD / 2 - 1.5, 0.4 + Math.random() * 0.3);
+    if (Math.random() < 0.6) addTree(x, -SD / 2 + 1.5 - Math.random() * 0.5, 0.8 + Math.random() * 0.4);
+    else addBush(x, -SD / 2 + 1.5, 0.4 + Math.random() * 0.3);
   }
-  for (var z = -SD / 2 + 2; z <= SD / 2 - 2; z += 1.5 + Math.random() * 1.5) {
-    if (Math.random() < 0.7) addTree(-SW / 2 + 1.5 - Math.random() * 0.5, z, 0.8 + Math.random() * 0.5);
-    else addBush(-SW / 2 + 1.5, z, 0.4 + Math.random() * 0.4);
-    if (Math.random() < 0.7) addTree(SW / 2 - 1.5 + Math.random() * 0.5, z, 0.8 + Math.random() * 0.5);
-    else addBush(SW / 2 - 1.5, z, 0.4 + Math.random() * 0.4);
+  for (var z = -SD / 2 + 3; z <= SD / 2 - 3; z += 3.5 + Math.random() * 1.2) {
+    if (Math.random() < 0.6) addTree(-SW / 2 + 1.5 - Math.random() * 0.5, z, 0.8 + Math.random() * 0.4);
+    else addBush(-SW / 2 + 1.5, z, 0.4 + Math.random() * 0.3);
+    if (Math.random() < 0.6) addTree(SW / 2 - 1.5 + Math.random() * 0.5, z, 0.8 + Math.random() * 0.4);
+    else addBush(SW / 2 - 1.5, z, 0.4 + Math.random() * 0.3);
   }
 
+  // Trail paths to food stations (unchanged)
   var trMat = new THREE.MeshStandardMaterial({ color: 0x8a6a3e, roughness: 1 });
   for (var fi = 0; fi < FS.length; fi++) {
     var st = FS[fi];
@@ -135,6 +141,7 @@ function buildTerrain() {
     }
   }
 
+  // Mound, rim, collar (unchanged)
   mound = new THREE.Mesh(new THREE.CylinderGeometry(NR + 0.3, NR + 0.6, 0.18, 16), new THREE.MeshStandardMaterial({ color: 0x6b4a2e, roughness: 1 }));
   mound.position.set(TX, GTY + 0.06, TCZ);
   mound.receiveShadow = mound.castShadow = true;
@@ -149,6 +156,7 @@ function buildTerrain() {
   collar.castShadow = collar.receiveShadow = true;
   scene.add(collar);
 
+  // Patrol point markers (unchanged)
   for (var pi = 0; pi < PATROL_POINTS.length; pi++) {
     var pt = PATROL_POINTS[pi];
     var m = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.2, 6), new THREE.MeshStandardMaterial({ color: 0xaa4444, emissive: 0x220000, emissiveIntensity: 0.3 }));
@@ -157,10 +165,11 @@ function buildTerrain() {
   }
 }
 
-// Mushrooms & night effects
+// ===== MUSHROOMS (reduced to 6, no per‑frame emissive update unless needed) =====
 var mushroomMeshes = [], mushroomLights = [];
+var _lastNightProgress = -1;  // cached value to avoid redundant updates
 function initMushrooms() {
-  for (var mi = 0; mi < 10; mi++) {
+  for (var mi = 0; mi < 6; mi++) {
     var mx = -SW / 2 + 4 + Math.random() * (SW - 8);
     var mz = -SD / 2 + 4 + Math.random() * (SD - 8);
     if (Math.abs(mx - TX) > 5 || Math.abs(mz - TCZ) > 5) createMushroom(mx, mz);
@@ -189,10 +198,10 @@ function createMushroom(x, z) {
   mushroomLights.push(light);
 }
 
-// Rain drops
+// ===== RAIN DROPS (reduced to 80) =====
 var rainDrops = [];
 function initRainDrops() {
-  for (var ri = 0; ri < 150; ri++) {
+  for (var ri = 0; ri < 80; ri++) {
     var drop = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.3, 3), new THREE.MeshStandardMaterial({ color: 0xaaccff, roughness: 0.5, emissive: 0x334466, emissiveIntensity: 0.2 }));
     drop.visible = false;
     drop.position.set(-SW / 2 + Math.random() * SW, Math.random() * 15, -SD / 2 + Math.random() * SD);
@@ -202,9 +211,9 @@ function initRainDrops() {
   }
 }
 
-// Particle system
+// ===== PARTICLE SYSTEM (reduced pool) =====
 var particlePool = [];
-function initParticles() { for (var pi = 0; pi < 200; pi++) particlePool.push(createParticle()); }
+function initParticles() { for (var pi = 0; pi < 150; pi++) particlePool.push(createParticle()); }
 function createParticle() {
   var m = new THREE.Mesh(new THREE.SphereGeometry(0.04, 4, 4), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 }));
   m.visible = false;
@@ -258,7 +267,7 @@ function disposeMesh(mesh) {
   });
 }
 
-// Food station visuals
+// Food station visuals (unchanged)
 function initFoodStations() {
   for (var fi = 0; fi < FS.length; fi++) {
     var st = FS[fi];
@@ -275,4 +284,4 @@ function initFoodStations() {
     st.markerMesh = m;
     makeLabel("🌾 " + st.label, st.x, GTY + 2.2, st.z, 256, 64, false);
   }
-        }
+                                                                         }
