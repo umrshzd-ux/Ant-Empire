@@ -42,17 +42,16 @@ function showMainMenu() {
   }
   gameLoopActive = false;
 
-  // ---- FIX: prevent offline rewards after short menu visit ----
+  // FIX: prevent offline rewards after short menu visit
   state.lastSaveTime = Date.now();
   saveGame();
-  // ----------------------------------------------------------
 
   document.getElementById('main-menu').style.display = 'flex';
   document.getElementById('hud').style.display = 'none';
   document.getElementById('bottom-bar').style.display = 'none';
   document.getElementById('canvas-container').style.display = 'none';
 
-  // Clear leftovers
+  // Clear any leftover game toasts, floaters, tutorials
   var toastEl = document.getElementById('toast');
   if (toastEl) { toastEl.style.opacity = '0'; toastEl.textContent = ''; }
   var floatersEl = document.getElementById('floaters');
@@ -61,6 +60,15 @@ function showMainMenu() {
   if (tutEl) tutEl.style.opacity = '0';
   var achEl = document.getElementById('achievement-toast');
   if (achEl) achEl.style.opacity = '0';
+
+  // Hide boss UI and summon button
+  var bossName = document.getElementById('boss-name');
+  var bossBar = document.getElementById('boss-health-bar');
+  if (bossName) bossName.style.display = 'none';
+  if (bossBar) bossBar.style.display = 'none';
+  var summonBtn = document.getElementById('summon-btn');
+  if (summonBtn) summonBtn.style.display = 'none';
+
   closeAllModals();
 
   renderSlots();
@@ -73,7 +81,7 @@ function hideMainMenu() {
   document.getElementById('canvas-container').style.display = 'block';
 }
 
-// Redesigned renderSlots with delete button beside colony name
+// Redesigned renderSlots with delete button
 function renderSlots() {
   var slots = SaveManager.getAllSlots(), html = '';
   for (var i = 0; i < slots.length; i++) {
