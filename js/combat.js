@@ -67,7 +67,7 @@ function combatUpdate(dt) {
 }
 
 function getBossTypeForZone() {
-  var available = [
+  var available = [];
   var cfg = getCurrentZoneConfig();
   for (var key in BOSS_TYPES) {
     var bt = BOSS_TYPES[key];
@@ -243,4 +243,4 @@ function summonBoss() {
   state.gems -= BAL.summonCost;
   spawnBoss();
   showToast("💀 Boss summoned!");
-  }
+      }
