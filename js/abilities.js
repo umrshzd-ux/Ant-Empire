@@ -1,6 +1,5 @@
 // ===== RALLY, SURGE, WAVES, EVENTS, WEATHER =====
 
-// Rally
 function activateRally() {
   if (state.rallyCooldown > 0 || state.rallyActive) return;
   state.rallyActive = true;
@@ -13,45 +12,29 @@ function activateRally() {
   updateDailyProgress('rally2', 1);
   checkAchievements();
 }
+
 function deactivateRally() {
   state.rallyActive = false;
   state.rallyCooldown = BAL.rallyCooldown;
   applyAllWorkerSpeeds();
 }
-if (rallyBtn) rallyBtn.addEventListener("click", activateRally);
 
-// Surge
-if (surgeBtn) {
-  surgeBtn.addEventListener("click", function() {
-    if (!state.surgeActive) return;
-    state.surgeActive = false;
-    surgeBtn.style.display = "none";
-    state.surgesCollected++;
-    state.lifetimeStats.totalSurges++;
-    AudioManager.sfx.surge();
-    for (var i = 0; i < BAL.surgeEggs; i++) {
-      state.eggs++;
-      var em = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), new THREE.MeshStandardMaterial({ color: 0xf5ecd6, roughness: 0.4 }));
-      em.position.copy(qMesh.position);
-      em.position.x += (Math.random() - 0.5) * 1.6;
-      em.position.z += (Math.random() - 0.5) * 1.4;
-      em.scale.setScalar(0.3);
-      scene.add(em);
-      eggMs.push({ mesh: em, mat: em.material, hatchTimer: state.hatchTime, totalHatchTime: state.hatchTime, restX: em.position.x, restZ: em.position.z, settling: false, settleT: 0 });
-    }
-    showToast("👑 Surge! +" + BAL.surgeEggs + " eggs");
-    checkAchievements();
-  });
-}
+// Rally button listener is now in ui.js (after DOM refs are ready)
+// No addEventListener here – see ui.js around the rally section.
 
-// Summon boss button
+// Surge button listener is now in ui.js
+// Event button listener is now in ui.js
+// Summon button listener is now in ui.js
+
 function updateSummonButton() {
-  if (state.bossActive) { summonBtn.style.display = "none"; }
-  else { summonBtn.style.display = state.gems >= BAL.summonCost ? "block" : "none"; }
+  if (!summonBtn) return;
+  if (state.bossActive) {
+    summonBtn.style.display = "none";
+  } else {
+    summonBtn.style.display = state.gems >= BAL.summonCost ? "block" : "none";
+  }
 }
-if (summonBtn) summonBtn.addEventListener("click", summonBoss);
 
-// Waves
 function startWave() {
   state.waveActive = true;
   state.waveSpidersRemaining = BAL.waveSpidersMin + Math.floor(Math.random() * (BAL.waveSpidersMax - BAL.waveSpidersMin + 1));
@@ -65,34 +48,24 @@ function startWave() {
     })(i);
   }
 }
+
 function endWave() {
   state.waveActive = false;
   state.waveTimer = BAL.waveIntervalMin + Math.random() * (BAL.waveIntervalMax - BAL.waveIntervalMin);
   showToast("✅ Wave cleared!");
 }
 
-// Random events
 function triggerRandomEvent() {
   state.eventActive = true;
   var ev = EVENTS[Math.floor(Math.random() * EVENTS.length)];
-  eventBtn.textContent = ev.emoji + " " + ev.name + "!";
-  eventBtn.style.display = "block";
-  eventBtn.dataset.idx = EVENTS.indexOf(ev);
+  if (eventBtn) {
+    eventBtn.textContent = ev.emoji + " " + ev.name + "!";
+    eventBtn.style.display = "block";
+    eventBtn.dataset.idx = EVENTS.indexOf(ev);
+  }
   showToast(ev.emoji + " " + ev.name + " appeared!");
 }
-if (eventBtn) {
-  eventBtn.addEventListener("click", function() {
-    if (!state.eventActive) return;
-    var idx = parseInt(eventBtn.dataset.idx);
-    if (idx >= 0 && idx < EVENTS.length) EVENTS[idx].action();
-    state.eventActive = false;
-    eventBtn.style.display = "none";
-    state.eventTimer = BAL.eventIntervalMin + Math.random() * (BAL.eventIntervalMax - BAL.eventIntervalMin);
-    showToast("✅ Event collected!");
-  });
-}
 
-// Weather handling
 function applyWeatherEffects(type, active) {
   if (type === "rain") {
     if (active) {
@@ -132,4 +105,4 @@ function applyWeatherEffects(type, active) {
       updateDailyProgress('night1', 1);
     }
   }
-  }
+}
