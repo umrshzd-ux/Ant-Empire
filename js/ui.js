@@ -37,7 +37,7 @@ function initDOMRefs() {
 }
 initDOMRefs();
 
-// Rally button listener
+// Rally button listener (safe)
 if (rallyBtn) rallyBtn.addEventListener("click", activateRally);
 
 // ---- Attach summon, surge, event listeners (moved from abilities.js) ----
@@ -88,16 +88,18 @@ if (summonBtn) {
 // ---- Close panels on outside click ----
 document.addEventListener('click', function(e) {
   if (!e.target.closest('#alerts-panel') && !e.target.closest('#alerts-pill')) {
-    elAlertsPanel.style.display = 'none';
+    if (elAlertsPanel) elAlertsPanel.style.display = 'none';
   }
   if (!e.target.closest('#resources-panel') && !e.target.closest('#resources-pill')) {
-    elResourcesPanel.style.display = 'none';
+    if (elResourcesPanel) elResourcesPanel.style.display = 'none';
   }
 });
 
-// ---- Close buttons inside panels ----
-document.getElementById('alerts-close-btn').onclick = function() { elAlertsPanel.style.display = 'none'; };
-document.getElementById('resources-close-btn').onclick = function() { elResourcesPanel.style.display = 'none'; };
+// ---- Close buttons inside panels (safe) ----
+var alertsCloseBtn = document.getElementById('alerts-close-btn');
+if (alertsCloseBtn) alertsCloseBtn.onclick = function() { elAlertsPanel.style.display = 'none'; };
+var resourcesCloseBtn = document.getElementById('resources-close-btn');
+if (resourcesCloseBtn) resourcesCloseBtn.onclick = function() { elResourcesPanel.style.display = 'none'; };
 
 function closeAllModals() {
   ['offline-modal', 'daily-modal', 'prestige-modal', 'ascend-modal', 'about-modal'].forEach(function(id) {
@@ -167,13 +169,13 @@ function updateAlertsPanel() {
   }
 }
 
-// These three functions are still called by main.js – they just delegate to the alerts panel
 function updateWaveTimer() { updateAlertsPanel(); }
 function updateEventTimer() { updateAlertsPanel(); }
 function updateBossTimer() { updateAlertsPanel(); }
 
 // Toggle alerts dropdown
-document.getElementById("alerts-pill").onclick = function() {
+var alertsPill = document.getElementById("alerts-pill");
+if (alertsPill) alertsPill.onclick = function() {
   AudioManager.sfx.buttonClick();
   if (elAlertsPanel.style.display === 'flex') { elAlertsPanel.style.display = 'none'; }
   else { elResourcesPanel.style.display = 'none'; elAlertsPanel.style.display = 'flex'; updateAlertsPanel(); }
@@ -191,7 +193,8 @@ function updateResourcesPopup() {
   document.getElementById("res-level").textContent = state.level;
 }
 
-document.getElementById("resources-pill").onclick = function() {
+var resourcesPill = document.getElementById("resources-pill");
+if (resourcesPill) resourcesPill.onclick = function() {
   AudioManager.sfx.buttonClick();
   if (elResourcesPanel.style.display === 'flex') { elResourcesPanel.style.display = 'none'; }
   else { elAlertsPanel.style.display = 'none'; elResourcesPanel.style.display = 'flex'; updateResourcesPopup(); }
@@ -220,7 +223,8 @@ function toggleMorePanel() {
   }
 }
 
-document.getElementById("btn-more").onclick = function() {
+var btnMore = document.getElementById("btn-more");
+if (btnMore) btnMore.onclick = function() {
   AudioManager.sfx.buttonClick();
   toggleMorePanel();
 };
@@ -613,14 +617,13 @@ function performAscension(apGain) {
   var ascCount = state.ascensionCount + apGain;
   var ascPoints = state.ascensionPoints + apGain;
   var ascUpgrades = JSON.parse(JSON.stringify(state.ascensionUpgrades));
-  // keep gemUpgrades (permanent)
   state.colonyName = "Colony " + (currentSlot + 1);
   state.food = BAL.baseFoodCap; state.gems = 0; state.foodCap = BAL.baseFoodCap;
   state.level = 1; state.xp = 0; state.xpToNext = Math.floor(40 * Math.pow(1.15, 0));
   state.eggs = 0; state.workerCount = 4; state.soldierCount = 0; state.scoutCount = 0;
   state.chambers = { foodStorage: { count: 0, bonusCap: 0 }, nursery: { count: 0, hatchReduction: 0 }, soldier: { count: 0 }, research: { count: 0 }, scout: { count: 0 } };
   state.upgrades = { soldierDamage: 0, workerSpeed: 0, eggLayTime: 0, foodCap: 0 };
-  state.gemUpgrades = state.gemUpgrades || {}; // keep permanent
+  state.gemUpgrades = state.gemUpgrades || {};
   state.expansionTrips = 0; state.unlockedZones = 0; state.rallyActive = false; state.rallyTimer = 0; state.rallyCooldown = 0;
   state.waveActive = false; state.waveTimer = 35; state.surgeActive = false; state.surgeTimer = 60 + Math.random() * 30;
   state.eventActive = false; state.eventTimer = 35 + Math.random() * 25; state.weatherActive = false; state.weatherTimer = 70 + Math.random() * 40;
@@ -857,7 +860,7 @@ function buildScoutChamber() {
 }
 
 // =============================================
-//  SHOP CATEGORY TABS
+//  SHOP CATEGORY TABS (safe)
 // =============================================
 function setupShopTabs() {
   var tabPermanent = document.getElementById("shop-tab-permanent");
@@ -866,6 +869,7 @@ function setupShopTabs() {
   var listPermanent = document.getElementById("shop-list-permanent");
   var listConsumable = document.getElementById("shop-list-consumable");
   var listSkins = document.getElementById("shop-list-skins");
+  if (!tabPermanent || !listPermanent) return;
 
   function showTab(tabId) {
     listPermanent.style.display = (tabId === 'permanent') ? 'block' : 'none';
@@ -879,7 +883,7 @@ function setupShopTabs() {
   tabPermanent.onclick = function() { showTab('permanent'); };
   tabConsumable.onclick = function() { showTab('consumable'); };
   tabSkins.onclick = function() { showTab('skins'); };
-  showTab('permanent'); // default
+  showTab('permanent');
 }
 
 // =============================================
@@ -899,17 +903,20 @@ function setupButtons() {
   }
 
   // Build
-  document.getElementById("btn-build").onclick = function() {
+  var btnBuild = document.getElementById("btn-build");
+  if (btnBuild) btnBuild.onclick = function() {
     AudioManager.sfx.buttonClick();
     if (buildPanel.classList.contains("open")) { buildPanel.classList.remove("open"); } else { closeAllPanels(); buildPanel.classList.add("open"); updateBuildButtonLabels(); }
   };
   // Upgrade
-  document.getElementById("btn-upgrades").onclick = function() {
+  var btnUpgrades = document.getElementById("btn-upgrades");
+  if (btnUpgrades) btnUpgrades.onclick = function() {
     AudioManager.sfx.buttonClick();
     if (upgradePanel.classList.contains("open")) { upgradePanel.classList.remove("open"); } else { closeAllPanels(); upgradePanel.classList.add("open"); refreshUpgradeUI(); }
   };
   // Shop
-  document.getElementById("btn-shop").onclick = function() {
+  var btnShop = document.getElementById("btn-shop");
+  if (btnShop) btnShop.onclick = function() {
     AudioManager.sfx.buttonClick();
     if (shopPanel.classList.contains("open")) { shopPanel.classList.remove("open"); } else { closeAllPanels(); shopPanel.classList.add("open"); setupShopTabs(); }
   };
@@ -938,7 +945,8 @@ function setupButtons() {
     if (ascPanel.classList.contains("open")) { ascPanel.classList.remove("open"); } else { closeAllPanels(); ascPanel.classList.add("open"); refreshAscensionShopUI(); }
   };
   // Daily (inside More)
-  document.getElementById("btn-daily").onclick = function() {
+  var btnDaily = document.getElementById("btn-daily");
+  if (btnDaily) btnDaily.onclick = function() {
     AudioManager.sfx.buttonClick();
     var dp = document.getElementById('daily-panel');
     dp.style.display = dp.style.display === 'flex' ? 'none' : 'flex';
@@ -946,12 +954,16 @@ function setupButtons() {
   };
 
   // Camera buttons (inside More)
-  document.getElementById("btn-surface").onclick = function() { flyToPreset("surface"); };
-  document.getElementById("btn-tunnel").onclick = function() { flyToPreset("tunnel"); };
-  document.getElementById("btn-orbit").onclick = function() { flyToPreset("orbit"); };
+  var btnSurface = document.getElementById("btn-surface");
+  if (btnSurface) btnSurface.onclick = function() { flyToPreset("surface"); };
+  var btnTunnel = document.getElementById("btn-tunnel");
+  if (btnTunnel) btnTunnel.onclick = function() { flyToPreset("tunnel"); };
+  var btnOrbit = document.getElementById("btn-orbit");
+  if (btnOrbit) btnOrbit.onclick = function() { flyToPreset("orbit"); };
 
   // Zone pill
-  document.getElementById("zone-pill").onclick = function() {
+  var zonePill = document.getElementById("zone-pill");
+  if (zonePill) zonePill.onclick = function() {
     AudioManager.sfx.buttonClick();
     var zones = state.unlockedZonesList;
     if (zones.length <= 1) { showToast("Explore more to unlock new zones!"); return; }
@@ -960,22 +972,32 @@ function setupButtons() {
     switchZone(zones[nextIdx]);
   };
   // Menu button
-  document.getElementById("btn-menu-ingame").onclick = function() { AudioManager.sfx.buttonClick(); showMainMenu(); };
+  var btnMenu = document.getElementById("btn-menu-ingame");
+  if (btnMenu) btnMenu.onclick = function() { AudioManager.sfx.buttonClick(); showMainMenu(); };
 
-  // Build chamber buttons
-  document.getElementById("build-food-storage").onclick = buildFoodStorageChamber;
-  document.getElementById("build-nursery").onclick = buildNurseryChamber;
-  document.getElementById("build-soldier").onclick = buildSoldierChamber;
-  document.getElementById("build-research").onclick = buildResearchChamber;
-  document.getElementById("build-scout").onclick = buildScoutChamber;
+  // Build chamber buttons (safe)
+  var bfs = document.getElementById("build-food-storage");
+  if (bfs) bfs.onclick = buildFoodStorageChamber;
+  var bn = document.getElementById("build-nursery");
+  if (bn) bn.onclick = buildNurseryChamber;
+  var bs = document.getElementById("build-soldier");
+  if (bs) bs.onclick = buildSoldierChamber;
+  var br = document.getElementById("build-research");
+  if (br) br.onclick = buildResearchChamber;
+  var bsc = document.getElementById("build-scout");
+  if (bsc) bsc.onclick = buildScoutChamber;
 
   // Upgrade buy buttons
-  document.getElementById("btn-upg-damage").onclick = function() { buyUpgrade("soldierDamage"); };
-  document.getElementById("btn-upg-speed").onclick = function() { buyUpgrade("workerSpeed"); };
-  document.getElementById("btn-upg-egg").onclick = function() { buyUpgrade("eggLayTime"); };
-  document.getElementById("btn-upg-cap").onclick = function() { buyUpgrade("foodCap"); };
+  var btnUpgDmg = document.getElementById("btn-upg-damage");
+  if (btnUpgDmg) btnUpgDmg.onclick = function() { buyUpgrade("soldierDamage"); };
+  var btnUpgSpd = document.getElementById("btn-upg-speed");
+  if (btnUpgSpd) btnUpgSpd.onclick = function() { buyUpgrade("workerSpeed"); };
+  var btnUpgEgg = document.getElementById("btn-upg-egg");
+  if (btnUpgEgg) btnUpgEgg.onclick = function() { buyUpgrade("eggLayTime"); };
+  var btnUpgCap = document.getElementById("btn-upg-cap");
+  if (btnUpgCap) btnUpgCap.onclick = function() { buyUpgrade("foodCap"); };
 
-  // Gem shop buttons (all new IDs)
+  // Gem shop buttons (all new IDs, safe loop)
   var allShopIds = Object.keys(GEM_ITEMS);
   for (var i = 0; i < allShopIds.length; i++) {
     var id = allShopIds[i];
@@ -987,31 +1009,55 @@ function setupButtons() {
     }
   }
 
-  // Settings, stats, roadmap, howtoplay, about (unchanged)
-  document.getElementById("btn-settings-menu").onclick = function() { AudioManager.sfx.buttonClick(); document.getElementById('settings-panel').style.display = 'flex'; };
-  document.getElementById("btn-stats-menu").onclick = function() { AudioManager.sfx.buttonClick(); document.getElementById('stats-panel').style.display = 'flex'; refreshStatsUI(); };
-  document.getElementById("btn-roadmap-menu").onclick = function() { AudioManager.sfx.buttonClick(); document.getElementById('roadmap-panel').style.display = 'flex'; refreshRoadmapUI(); };
-  document.getElementById("btn-howtoplay-menu").onclick = function() { AudioManager.sfx.buttonClick(); document.getElementById('howtoplay-panel').style.display = 'flex'; };
-  document.getElementById("btn-close-settings").onclick = function() { document.getElementById('settings-panel').style.display = 'none'; };
-  document.getElementById("btn-close-stats").onclick = function() { document.getElementById('stats-panel').style.display = 'none'; };
-  document.getElementById("btn-close-daily").onclick = function() { document.getElementById('daily-panel').style.display = 'none'; };
-  document.getElementById("btn-close-roadmap").onclick = function() { document.getElementById('roadmap-panel').style.display = 'none'; };
-  document.getElementById("btn-close-ascension").onclick = function() { document.getElementById('ascension-panel').style.display = 'none'; };
-  document.getElementById("btn-close-howtoplay").onclick = function() { document.getElementById('howtoplay-panel').style.display = 'none'; };
-  document.getElementById("btn-close-about").onclick = function() { document.getElementById('about-modal').style.display = 'none'; };
-  document.getElementById("toggle-sfx").onclick = function() { GameSettings.sfxOn = !GameSettings.sfxOn; AudioManager.setSfx(GameSettings.sfxOn); this.className = 'toggle-switch' + (GameSettings.sfxOn ? ' on' : ''); };
-  document.getElementById("toggle-ambient").onclick = function() { GameSettings.ambientOn = !GameSettings.ambientOn; AudioManager.setAmbient(GameSettings.ambientOn); this.className = 'toggle-switch' + (GameSettings.ambientOn ? ' on' : ''); };
-  document.getElementById("toggle-music").onclick = function() { GameSettings.musicOn = !GameSettings.musicOn; AudioManager.setMusic(GameSettings.musicOn); this.className = 'toggle-switch' + (GameSettings.musicOn ? ' on' : ''); };
-  document.getElementById("toggle-shake").onclick = function() { GameSettings.shakeOn = !GameSettings.shakeOn; localStorage.setItem('antEmpire_shake', GameSettings.shakeOn ? '1' : '0'); this.className = 'toggle-switch' + (GameSettings.shakeOn ? ' on' : ''); };
+  // Settings, stats, roadmap, howtoplay, about (unchanged, with safety)
+  var btnSettings = document.getElementById("btn-settings-menu");
+  if (btnSettings) btnSettings.onclick = function() { AudioManager.sfx.buttonClick(); document.getElementById('settings-panel').style.display = 'flex'; };
+  var btnStats = document.getElementById("btn-stats-menu");
+  if (btnStats) btnStats.onclick = function() { AudioManager.sfx.buttonClick(); document.getElementById('stats-panel').style.display = 'flex'; refreshStatsUI(); };
+  var btnRoadmap = document.getElementById("btn-roadmap-menu");
+  if (btnRoadmap) btnRoadmap.onclick = function() { AudioManager.sfx.buttonClick(); document.getElementById('roadmap-panel').style.display = 'flex'; refreshRoadmapUI(); };
+  var btnHowto = document.getElementById("btn-howtoplay-menu");
+  if (btnHowto) btnHowto.onclick = function() { AudioManager.sfx.buttonClick(); document.getElementById('howtoplay-panel').style.display = 'flex'; };
+  // About menu button removed, so no handler needed.
+
+  var btnCloseSettings = document.getElementById("btn-close-settings");
+  if (btnCloseSettings) btnCloseSettings.onclick = function() { document.getElementById('settings-panel').style.display = 'none'; };
+  var btnCloseStats = document.getElementById("btn-close-stats");
+  if (btnCloseStats) btnCloseStats.onclick = function() { document.getElementById('stats-panel').style.display = 'none'; };
+  var btnCloseDaily = document.getElementById("btn-close-daily");
+  if (btnCloseDaily) btnCloseDaily.onclick = function() { document.getElementById('daily-panel').style.display = 'none'; };
+  var btnCloseRoadmap = document.getElementById("btn-close-roadmap");
+  if (btnCloseRoadmap) btnCloseRoadmap.onclick = function() { document.getElementById('roadmap-panel').style.display = 'none'; };
+  var btnCloseAsc = document.getElementById("btn-close-ascension");
+  if (btnCloseAsc) btnCloseAsc.onclick = function() { document.getElementById('ascension-panel').style.display = 'none'; };
+  var btnCloseHowto = document.getElementById("btn-close-howtoplay");
+  if (btnCloseHowto) btnCloseHowto.onclick = function() { document.getElementById('howtoplay-panel').style.display = 'none'; };
+  var btnCloseAbout = document.getElementById("btn-close-about");
+  if (btnCloseAbout) btnCloseAbout.onclick = function() { document.getElementById('about-modal').style.display = 'none'; };
+
+  var toggleSfx = document.getElementById("toggle-sfx");
+  if (toggleSfx) toggleSfx.onclick = function() { GameSettings.sfxOn = !GameSettings.sfxOn; AudioManager.setSfx(GameSettings.sfxOn); this.className = 'toggle-switch' + (GameSettings.sfxOn ? ' on' : ''); };
+  var toggleAmb = document.getElementById("toggle-ambient");
+  if (toggleAmb) toggleAmb.onclick = function() { GameSettings.ambientOn = !GameSettings.ambientOn; AudioManager.setAmbient(GameSettings.ambientOn); this.className = 'toggle-switch' + (GameSettings.ambientOn ? ' on' : ''); };
+  var toggleMus = document.getElementById("toggle-music");
+  if (toggleMus) toggleMus.onclick = function() { GameSettings.musicOn = !GameSettings.musicOn; AudioManager.setMusic(GameSettings.musicOn); this.className = 'toggle-switch' + (GameSettings.musicOn ? ' on' : ''); };
+  var toggleShk = document.getElementById("toggle-shake");
+  if (toggleShk) toggleShk.onclick = function() { GameSettings.shakeOn = !GameSettings.shakeOn; localStorage.setItem('antEmpire_shake', GameSettings.shakeOn ? '1' : '0'); this.className = 'toggle-switch' + (GameSettings.shakeOn ? ' on' : ''); };
 
   // Show/hide buttons based on game state
   updateBuildButtons();
-  document.getElementById("btn-evolution").style.display = (state.level >= BAL.evolutionUnlockLevel) ? "inline-block" : "none";
-  document.getElementById("btn-prestige-shop").style.display = (state.prestigeCount > 0) ? "inline-block" : "none";
-  document.getElementById("btn-ascension-shop").style.display = (state.prestigeCount >= BAL.ascendUnlockPrestige || state.ascensionCount > 0) ? "inline-block" : "none";
-  document.getElementById("btn-surface").style.display = "inline-block";
-  document.getElementById("btn-tunnel").style.display = "inline-block";
-  document.getElementById("btn-orbit").style.display = "inline-block";
+  var btnEvo2 = document.getElementById("btn-evolution");
+  if (btnEvo2) btnEvo2.style.display = (state.level >= BAL.evolutionUnlockLevel) ? "inline-block" : "none";
+  var btnPP2 = document.getElementById("btn-prestige-shop");
+  if (btnPP2) btnPP2.style.display = (state.prestigeCount > 0) ? "inline-block" : "none";
+  var btnAsc2 = document.getElementById("btn-ascension-shop");
+  if (btnAsc2) btnAsc2.style.display = (state.prestigeCount >= BAL.ascendUnlockPrestige || state.ascensionCount > 0) ? "inline-block" : "none";
+  var btnSurf = document.getElementById("btn-surface");
+  if (btnSurf) btnSurf.style.display = "inline-block";
+  var btnTun = document.getElementById("btn-tunnel");
+  if (btnTun) btnTun.style.display = "inline-block";
+  var btnOrb = document.getElementById("btn-orbit");
+  if (btnOrb) btnOrb.style.display = "inline-block";
 
   // Disable owned shop buttons
   for (var i = 0; i < allShopIds.length; i++) {
@@ -1022,4 +1068,4 @@ function setupButtons() {
     }
   }
   refreshUpgradeUI(); refreshAscensionShopUI();
-                  }
+    }
