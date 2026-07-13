@@ -3,7 +3,7 @@ var AudioManager = {};
 (function(AM) {
   var ctx = null, sfxOn = true, ambientOn = true, musicOn = true;
   var ambientNode = null, ambientGain = null;
-  var musicNodes = [];  // oscillators & gains for background music
+  var musicNodes = [];
 
   AM.init = function() {
     try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { ctx = null; }
@@ -15,10 +15,8 @@ var AudioManager = {};
       if (musicOn) AM.startMusic();
     }
   };
-
   AM.resume = function() { if (ctx && ctx.state === 'suspended') ctx.resume(); };
 
-  // ---- SFX helpers ----
   AM.playTone = function(freq, dur, vol, type, rampDown) {
     if (!ctx || !sfxOn) return;
     var o = ctx.createOscillator(), g = ctx.createGain();
@@ -46,7 +44,6 @@ var AudioManager = {};
     notes.forEach(function(n, i) { setTimeout(function() { AM.playTone(n.freq, n.dur || 0.1, (vol || 0.1) * 0.7, n.type || 'sine'); }, i * (dur / notes.length) * 1000); });
   };
 
-  // ---- SFX library ----
   AM.sfx = {
     click: function() { AM.playTone(800, 0.05, 0.08, 'square'); },
     foodCollect: function() { AM.playTone(400, 0.08, 0.06, 'sine'); setTimeout(function() { AM.playTone(600, 0.08, 0.06, 'sine'); }, 40); },
@@ -69,7 +66,6 @@ var AudioManager = {};
     ascend: function() { AM.playArpeggio([{freq:523,dur:0.1},{freq:659,dur:0.1},{freq:784,dur:0.1},{freq:1047,dur:0.2},{freq:1318,dur:0.3}], 0.9, 0.12); }
   };
 
-  // ---- Ambient (unchanged) ----
   AM.startAmbient = function() {
     if (!ctx || !ambientOn || !ambientGain) return;
     if (ambientNode) { try { ambientNode.stop(); } catch(e) {} }
@@ -95,54 +91,34 @@ var AudioManager = {};
     }
   };
 
-  // ---- Background Music (with click‑free fade‑out) ----
   AM.startMusic = function() {
     if (!ctx || !musicOn) return;
     AM.stopMusic();
     var now = ctx.currentTime;
-    var baseFreq = 130.81; // C3
-    var chord = [1, 5/4, 3/2, 2]; // C major chord over two octaves
+    var baseFreq = 130.81;
+    var chord = [1, 5/4, 3/2, 2];
     var masterGain = ctx.createGain();
-    masterGain.gain.value = 0.04;
+    masterGain.gain.value = 0.08;
     masterGain.connect(ctx.destination);
     chord.forEach(function(ratio, i) {
-      var osc = ctx.createOscillator();
-      osc.type = 'sine';
+      var osc = ctx.createOscillator(); osc.type = 'sine';
       osc.frequency.setValueAtTime(baseFreq * ratio, now);
-      var vol = ctx.createGain();
-      vol.gain.setValueAtTime(0.02, now);
-      vol.gain.exponentialRampToValueAtTime(0.015, now + 2);
-      osc.connect(vol);
-      vol.connect(masterGain);
-      osc.start(now + i * 0.1);
+      var vol = ctx.createGain(); vol.gain.setValueAtTime(0.02, now); vol.gain.exponentialRampToValueAtTime(0.015, now + 2);
+      osc.connect(vol); vol.connect(masterGain); osc.start(now + i * 0.1);
       musicNodes.push({ osc: osc, gain: vol });
     });
-    // store master gain separately for easy fade‑out
     musicNodes.push({ masterGain: masterGain });
   };
 
   AM.stopMusic = function() {
     if (!ctx || musicNodes.length === 0) return;
-    // Find the master gain node
     var masterGainEntry = null;
-    for (var i = 0; i < musicNodes.length; i++) {
-      if (musicNodes[i].masterGain) {
-        masterGainEntry = musicNodes[i];
-        break;
-      }
-    }
+    for (var i = 0; i < musicNodes.length; i++) { if (musicNodes[i].masterGain) { masterGainEntry = musicNodes[i]; break; } }
     if (masterGainEntry && masterGainEntry.masterGain) {
       var masterGain = masterGainEntry.masterGain;
-      // Fade out over 0.05s to avoid click
       masterGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.05);
-      // Schedule oscillator stops after the fade completes
       var stopTime = ctx.currentTime + 0.06;
-      musicNodes.forEach(function(node) {
-        if (node.osc) {
-          try { node.osc.stop(stopTime); } catch(e) {}
-        }
-      });
-      // Clean up connections after the stop has executed
+      musicNodes.forEach(function(node) { if (node.osc) try { node.osc.stop(stopTime); } catch(e) {} });
       setTimeout(function() {
         musicNodes.forEach(function(node) {
           try { if (node.osc) node.osc.disconnect(); } catch(e) {}
@@ -152,7 +128,6 @@ var AudioManager = {};
         musicNodes = [];
       }, 100);
     } else {
-      // No master gain found – just stop immediately (shouldn't happen)
       musicNodes.forEach(function(node) {
         try { if (node.osc) node.osc.stop(); } catch(e) {}
         try { if (node.osc) node.osc.disconnect(); } catch(e) {}
@@ -165,11 +140,9 @@ var AudioManager = {};
   AM.setMusic = function(on) {
     musicOn = on;
     localStorage.setItem('antEmpire_music', on ? '1' : '0');
-    if (on) AM.startMusic();
-    else AM.stopMusic();
+    if (on) AM.startMusic(); else AM.stopMusic();
   };
 
-  // ---- Settings toggles ----
   AM.setSfx = function(on) { sfxOn = on; localStorage.setItem('antEmpire_sfx', on ? '1' : '0'); };
   AM.setAmbient = function(on) {
     ambientOn = on; localStorage.setItem('antEmpire_ambient', on ? '1' : '0');
@@ -181,7 +154,6 @@ var AudioManager = {};
 document.addEventListener('click', function() { AudioManager.resume(); }, { once: true });
 document.addEventListener('touchstart', function() { AudioManager.resume(); }, { once: true });
 
-// Settings
 var GameSettings = {
   sfxOn: true, ambientOn: true, musicOn: true, shakeOn: true,
   init: function() {
@@ -193,15 +165,10 @@ var GameSettings = {
     AudioManager.setAmbient(GameSettings.ambientOn);
     AudioManager.setMusic(GameSettings.musicOn);
 
-    // Update toggle switches, with null‑checks
     var el;
-    el = document.getElementById('toggle-sfx');
-    if (el) el.className = 'toggle-switch' + (GameSettings.sfxOn ? ' on' : '');
-    el = document.getElementById('toggle-ambient');
-    if (el) el.className = 'toggle-switch' + (GameSettings.ambientOn ? ' on' : '');
-    el = document.getElementById('toggle-music');
-    if (el) el.className = 'toggle-switch' + (GameSettings.musicOn ? ' on' : '');
-    el = document.getElementById('toggle-shake');
-    if (el) el.className = 'toggle-switch' + (GameSettings.shakeOn ? ' on' : '');
+    el = document.getElementById('toggle-sfx'); if (el) el.className = 'toggle-switch' + (GameSettings.sfxOn ? ' on' : '');
+    el = document.getElementById('toggle-ambient'); if (el) el.className = 'toggle-switch' + (GameSettings.ambientOn ? ' on' : '');
+    el = document.getElementById('toggle-music'); if (el) el.className = 'toggle-switch' + (GameSettings.musicOn ? ' on' : '');
+    el = document.getElementById('toggle-shake'); if (el) el.className = 'toggle-switch' + (GameSettings.shakeOn ? ' on' : '');
   }
 };
