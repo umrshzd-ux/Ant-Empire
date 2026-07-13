@@ -591,6 +591,20 @@ canvas { display: block; }
 #toast { position: absolute; top: 75px; left: 50%; transform: translateX(-50%); background: rgba(30,18,8,0.95); border: 1px solid rgba(200,150,80,0.6); color: #f3e3c4; padding: 10px 24px; border-radius: 14px; font-size: 15px; font-weight: 700; z-index: 35; pointer-events: none; opacity: 0; transition: opacity 0.3s ease; white-space: nowrap; box-shadow: 0 8px 20px rgba(0,0,0,0.6); }
 #achievement-toast { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(20,10,0,0.96); border: 2px solid #ffd27a; color: #ffd27a; padding: 18px 26px; border-radius: 18px; font-size: 16px; font-weight: 800; z-index: 90; pointer-events: none; text-align: center; opacity: 0; transition: opacity 0.4s ease; display: flex; flex-direction: column; align-items: center; gap: 6px; box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 30px rgba(255,200,100,0.3); }
 #tutorial-toast { position: absolute; bottom: 110px; left: 50%; transform: translateX(-50%); background: rgba(20,10,0,0.94); border: 2px solid #ffaa33; color: #ffd27a; padding: 14px 22px; border-radius: 16px; font-size: 15px; font-weight: 700; z-index: 35; pointer-events: none; text-align: center; opacity: 0; transition: opacity 0.5s ease; max-width: 280px; box-shadow: 0 14px 32px rgba(0,0,0,0.6); }
+
+/* ============================================================
+   SHOP CATEGORY TABS
+   ============================================================ */
+.shop-category-tabs {
+  display: flex; justify-content: center; gap: 4px; margin-bottom: 8px;
+}
+.shop-category-tabs button {
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(200,150,80,0.3); color: #ccc;
+  border-radius: 8px; padding: 4px 10px; font-size: 11px; cursor: pointer;
+}
+.shop-category-tabs button.active {
+  background: rgba(200,150,80,0.3); color: #fff; border-color: #ffb700;
+}
 </style>
 </head>
 <body>
@@ -628,10 +642,9 @@ canvas { display: block; }
   <button class="menu-btn" id="btn-roadmap-menu">🗺️ Roadmap</button>
   <button class="menu-btn" id="btn-howtoplay-menu">📖 How to Play</button>
   <button class="menu-btn" id="btn-settings-menu">⚙️ Settings</button>
-  <button class="menu-btn" id="btn-about-menu">ℹ️ About</button>
 </div>
 
-<!-- HOW TO PLAY -->
+<!-- HOW TO PLAY (merged with About) -->
 <div id="howtoplay-panel" class="overlay-panel">
   <div class="panel-title">📖 How to Play</div>
   <div style="color:#f3e3c4;font-size:14px;line-height:1.6;padding:4px 0">
@@ -644,6 +657,8 @@ canvas { display: block; }
     <p>✨ <b>Prestige:</b> Reset at Lv30 for bonuses.</p>
     <p>⬆️ <b>Ascension:</b> Ultimate prestige at P100.</p>
     <p>🌍 <b>Zones:</b> Scouts unlock new areas.</p>
+    <hr style="border-color:rgba(255,255,255,0.1); margin: 10px 0;">
+    <p style="color:#aaa;">🐜 Ant Empire: Idle Colony<br>Version 20<br>Made with ❤️ and Three.js</p>
   </div>
   <button class="menu-btn" id="btn-close-howtoplay">Close</button>
 </div>
@@ -669,20 +684,6 @@ canvas { display: block; }
 
 <!-- ASCENSION -->
 <div id="ascension-panel" class="overlay-panel"><div class="panel-title">⬆️ Ascension</div><div id="ascension-content"></div><button class="menu-btn" id="btn-close-ascension">Close</button></div>
-
-<!-- ABOUT MODAL -->
-<div id="about-modal" class="modal-overlay">
-  <div class="modal-card">
-    <div class="modal-title">🐜 About Ant Empire</div>
-    <div style="color:#f3e3c4;font-size:16px;line-height:1.5">
-      <p>A 3D idle colony simulation game.</p>
-      <p>Build chambers, evolve ants, defeat bosses, and explore new zones!</p>
-      <p>Version 19</p>
-      <p>Made with ❤️ and Three.js</p>
-    </div>
-    <button class="modal-btn primary" id="btn-close-about">Close</button>
-  </div>
-</div>
 
 <!-- ========== DECLUTTERED HUD ========== -->
 <div id="hud" style="display:none">
@@ -738,60 +739,51 @@ canvas { display: block; }
   <button class="cam-btn" id="btn-orbit" style="display:none">Orbit</button>
 </div>
 
-<!-- Toast, floaters, etc. -->
-<div id="toast"></div><div id="floaters"></div><div id="tutorial-toast"></div>
-<div id="boss-name">👑 Queen Spider</div><div id="boss-health-bar"><div id="boss-health-fill"></div></div>
-<div id="achievement-toast"><div class="ach-icon" id="ach-toast-icon"></div><div class="ach-title" id="ach-toast-title"></div><div class="ach-desc" id="ach-toast-desc"></div></div>
-
-<!-- OFFLINE MODAL -->
-<div id="offline-modal" class="modal-overlay">
-  <div class="modal-card">
-    <div class="modal-title">🐜 Welcome Back!</div>
-    <div style="font-size:15px;color:#f3e3c4;margin:4px 0" id="offline-time"></div>
-    <div style="font-size:15px;color:#f3e3c4;margin:4px 0" id="offline-food"></div>
-    <div style="font-size:15px;color:#f3e3c4;margin:4px 0" id="offline-eggs"></div>
-    <div style="font-size:15px;color:#f3e3c4;margin:4px 0" id="offline-gems"></div>
-    <button class="modal-btn primary" id="offline-claim">Collect Rewards!</button>
-  </div>
-</div>
-
-<!-- DAILY LOGIN MODAL -->
-<div id="daily-modal" class="modal-overlay">
-  <div class="modal-card">
-    <div class="modal-title">🔥 Daily Login Bonus!</div>
-    <div style="font-size:20px;margin:8px 0" id="daily-streak-icon"></div>
-    <div style="font-size:16px;color:#f3e3c4;margin:4px 0" id="daily-reward-text"></div>
-    <div style="font-size:16px;color:#ffd27a;display:none;margin:4px 0" id="daily-special-text"></div>
-    <button class="modal-btn primary" id="daily-claim">Claim Reward!</button>
-  </div>
-</div>
-
-<!-- PRESTIGE MODAL -->
-<div id="prestige-modal" class="modal-overlay">
-  <div class="modal-card">
-    <div class="modal-title">✨ Prestige Migration!</div>
-    <div style="font-size:15px;color:#f3e3c4;margin:4px 0" id="prestige-info-text"></div>
-    <div style="font-size:15px;color:#f3e3c4;margin:4px 0" id="prestige-reward-text"></div>
-    <button class="modal-btn primary" id="prestige-confirm">Migrate Colony!</button>
-    <button class="modal-btn secondary" id="prestige-cancel">Cancel</button>
-  </div>
-</div>
-
-<!-- ASCEND MODAL -->
-<div id="ascend-modal" class="modal-overlay">
-  <div class="modal-card">
-    <div class="modal-title">⬆️ Ascend</div>
-    <div style="font-size:15px;color:#f3e3c4;margin:4px 0" id="ascend-info-text"></div>
-    <div style="font-size:15px;color:#f3e3c4;margin:4px 0" id="ascend-reward-text"></div>
-    <button class="modal-btn primary" id="ascend-confirm">Ascend!</button>
-    <button class="modal-btn secondary" id="ascend-cancel">Cancel</button>
-  </div>
-</div>
-
 <!-- Surge, event, summon buttons -->
 <div id="surge-btn">👑 Fertile Surge!</div>
 <div id="event-btn">🎲 Random Event!</div>
 <div id="summon-btn">💀 Summon Boss (5💎)</div>
+
+<!-- SHOP PANEL (redesigned with tabs) -->
+<div id="shop-panel" class="game-panel">
+  <div class="shop-category-tabs">
+    <button id="shop-tab-permanent" class="active">Permanent</button>
+    <button id="shop-tab-consumable">Consumable</button>
+    <button id="shop-tab-skins">Skins</button>
+  </div>
+  <div id="shop-list-permanent">
+    <div class="panel-option"><span>🥇Golden Egg<br><small>+1 golden worker</small></span><button id="btn-shop-goldenEgg">50💎</button></div>
+    <div class="panel-option"><span>🛡️Soldier Armor<br><small>+30 HP</small></span><button id="btn-shop-soldierArmor">40💎</button></div>
+    <div class="panel-option"><span>👸Queen's Blessing<br><small>-5s egg lay</small></span><button id="btn-shop-queenBless">35💎</button></div>
+    <div class="panel-option"><span>🗺️Scout's Map<br><small>+5 food/trip</small></span><button id="btn-shop-scoutMap">30💎</button></div>
+    <div class="panel-option"><span>✨Golden Skin<br><small>+1 food/trip</small></span><button id="btn-shop-goldenSkin">45💎</button></div>
+    <div class="panel-option"><span>💪Ant Strength<br><small>+4 soldier dmg</small></span><button id="btn-shop-antStrength">35💎</button></div>
+    <div class="panel-option"><span>📦Deep Storage<br><small>+300 food cap</small></span><button id="btn-shop-deepStorage">25💎</button></div>
+    <div class="panel-option"><span>💎Gem Magnet<br><small>+15% gem chance</small></span><button id="btn-shop-gemMagnet">60💎</button></div>
+    <div class="panel-option"><span>⏱️Rapid Hatch<br><small>-4s hatch time</small></span><button id="btn-shop-rapidHatch">50💎</button></div>
+    <div class="panel-option"><span>🔥Lucky Ant<br><small>+10% rare ant</small></span><button id="btn-shop-luckyAnt">40💎</button></div>
+  </div>
+  <div id="shop-list-consumable" style="display:none">
+    <div class="panel-option"><span>⚡Speed Boost<br><small>5 min</small></span><button id="btn-shop-speedBoost">15💎</button></div>
+    <div class="panel-option"><span>🥚Insta-Hatch<br><small>hatch all eggs</small></span><button id="btn-shop-instantHatch">10💎</button></div>
+    <div class="panel-option"><span>🍞Food Crate<br><small>+500 food</small></span><button id="btn-shop-foodCrate">8💎</button></div>
+    <div class="panel-option"><span>💀Boss Lure<br><small>summon boss</small></span><button id="btn-shop-bossLure">20💎</button></div>
+    <div class="panel-option"><span>🌤️Weather Charm<br><small>end weather</small></span><button id="btn-shop-weatherCharm">10💎</button></div>
+    <div class="panel-option"><span>🔱Rally Charge<br><small>reset rally</small></span><button id="btn-shop-rallyCharge">12💎</button></div>
+    <div class="panel-option"><span>🎯Lucky Hour<br><small>5 min rare boost</small></span><button id="btn-shop-luckyHour">18💎</button></div>
+    <div class="panel-option"><span>🛡️Defense Banner<br><small>3 min 50% dmg</small></span><button id="btn-shop-defenseBanner">25💎</button></div>
+  </div>
+  <div id="shop-list-skins" style="display:none">
+    <div class="panel-option"><span>🌑Shadow Skin</span><button id="btn-shop-shadowSkin">60💎</button></div>
+    <div class="panel-option"><span>🔥Fire Skin</span><button id="btn-shop-fireSkin">60💎</button></div>
+    <div class="panel-option"><span>❄️Ice Skin</span><button id="btn-shop-iceSkin">60💎</button></div>
+    <div class="panel-option"><span>🌈Rainbow Skin</span><button id="btn-shop-rainbowSkin">200💎</button></div>
+    <div class="panel-option"><span>🍄Glowing Nest</span><button id="btn-shop-glowingNest">80💎</button></div>
+    <div class="panel-option"><span>💎Crystal Entrance</span><button id="btn-shop-crystalEntrance">120💎</button></div>
+    <div class="panel-option"><span>👑Royal Carpet</span><button id="btn-shop-royalCarpet">100💎</button></div>
+    <div class="panel-option"><span>✨Golden Sparkles</span><button id="btn-shop-goldenSparkles">150💎</button></div>
+  </div>
+</div>
 
 <!-- BUILD PANEL -->
 <div id="build-panel" class="game-panel">
@@ -808,38 +800,29 @@ canvas { display: block; }
   <div class="panel-option"><span>🥚Queen Fertility</span><span id="upg-egg"></span><button id="btn-upg-egg">Buy</button></div>
   <div class="panel-option"><span>📦Storage</span><span id="upg-cap"></span><button id="btn-upg-cap">Buy</button></div>
 </div>
-<div id="shop-panel" class="game-panel">
-  <div class="panel-option"><span>🥇Golden Egg</span><button id="btn-shop-golden">5💎</button></div>
-  <div class="panel-option"><span>🛡️Armor</span><button id="btn-shop-armor">8💎</button></div>
-  <div class="panel-option"><span>👸Blessing</span><button id="btn-shop-bless">7💎</button></div>
-  <div class="panel-option"><span>🗺️Map</span><button id="btn-shop-map">6💎</button></div>
-  <div class="panel-option"><span>⚡Speed Boost</span><button id="btn-shop-boost">3💎</button></div>
-  <div class="panel-option"><span>🥚Insta-Hatch</span><button id="btn-shop-hatch">2💎</button></div>
-  <div class="panel-option"><span>✨Golden Skin</span><button id="btn-shop-skin">10💎</button></div>
-</div>
 <div id="prestige-shop-panel" class="game-panel"><div style="color:#ff44ff;font-weight:700;text-align:center">✨ Prestige Shop</div><div id="prestige-shop-list"></div></div>
 <div id="ascension-shop-panel" class="game-panel"><div style="color:#ffaa00;font-weight:700;text-align:center">⬆️ Ascension Shop</div><div id="ascension-shop-list"></div></div>
 <div id="achievements-panel" class="game-panel"><div style="color:#ffd27a;font-weight:700;text-align:center">🏆 Achievements</div><div id="ach-list"></div></div>
 
-<!-- Background music (generated by audio.js) -->
+<!-- Background music -->
 <audio id="bg-music" loop style="display:none"></audio>
 
 <!-- SCRIPTS -->
-<script src="js/three.min.js?v=final-music"></script>
-<script src="js/audio.js?v=final-music"></script>
-<script src="js/config.js?v=final-music"></script>
-<script src="js/state.js?v=final-music"></script>
-<script src="js/terrain.js?v=final-music"></script>
-<script src="js/main.js?v=final-music"></script>
-<script src="js/camera.js?v=final-music"></script>
-<script src="js/chambers.js?v=final-music"></script>
-<script src="js/ants.js?v=final-music"></script>
-<script src="js/enemies.js?v=final-music"></script>
-<script src="js/combat.js?v=final-music"></script>
-<script src="js/abilities.js?v=final-music"></script>
-<script src="js/ui.js?v=final-music"></script>
-<script src="js/shop.js?v=final-music"></script>
-<script src="js/upgrades.js?v=final-music"></script>
+<script src="js/three.min.js?v=econ"></script>
+<script src="js/audio.js?v=econ"></script>
+<script src="js/config.js?v=econ"></script>
+<script src="js/state.js?v=econ"></script>
+<script src="js/terrain.js?v=econ"></script>
+<script src="js/main.js?v=econ"></script>
+<script src="js/camera.js?v=econ"></script>
+<script src="js/chambers.js?v=econ"></script>
+<script src="js/ants.js?v=econ"></script>
+<script src="js/enemies.js?v=econ"></script>
+<script src="js/combat.js?v=econ"></script>
+<script src="js/abilities.js?v=econ"></script>
+<script src="js/ui.js?v=econ"></script>
+<script src="js/shop.js?v=econ"></script>
+<script src="js/upgrades.js?v=econ"></script>
 
 <script>
 // ===== DUST PARTICLES (reduced count for performance) =====
@@ -950,4 +933,4 @@ canvas { display: block; }
   })();
 </script>
 </body>
-   </html>
+                                                          </html>
