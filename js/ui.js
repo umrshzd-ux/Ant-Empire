@@ -36,6 +36,8 @@ function initDOMRefs() {
   rallyOverlay = rallyBtn ? rallyBtn.querySelector(".cooldown-overlay") : null;
 }
 initDOMRefs();
+
+// Rally button listener
 if (rallyBtn) rallyBtn.addEventListener("click", activateRally);
 
 // ---- Attach summon, surge, event listeners (moved from abilities.js) ----
@@ -79,7 +81,7 @@ if (summonBtn) {
     state.gems -= BAL.summonCost;
     spawnBoss();
     showToast("💀 Boss summoned!");
-    refreshHUD();  // update gem display
+    refreshHUD();
   });
 }
 
@@ -204,7 +206,6 @@ function refreshHUD() {
   elGems.textContent = Math.floor(state.gems);
   elAnts.textContent = state.workerCount + state.soldierCount + state.scoutCount;
   document.getElementById('zone-display').textContent = ZONE_CONFIG[state.currentZone] ? ZONE_CONFIG[state.currentZone].label : '🌳Forest';
-  // Immediately update summon button visibility based on gems
   if (typeof updateSummonButton === 'function') updateSummonButton();
 }
 
@@ -554,7 +555,9 @@ function performPrestige(ppGain) {
   state.food = BAL.baseFoodCap; state.eggs = 0; state.workerCount = 4; state.soldierCount = 0; state.scoutCount = 0;
   AudioManager.sfx.prestige(); triggerShake(8, 0.8);
   state.chambers = { foodStorage: { count: 0, bonusCap: 0 }, nursery: { count: 0, hatchReduction: 0 }, soldier: { count: 0 }, research: { count: 0 }, scout: { count: 0 } };
-  state.upgrades = { soldierDamage: 0, workerSpeed: 0, eggLayTime: 0, foodCap: 0 }; state.expansionTrips = 0; state.unlockedZones = 0; state.virtualWorkers = 0; state.earlyGameBoost = BAL.earlyGameBoostDuration;
+  state.upgrades = { soldierDamage: 0, workerSpeed: 0, eggLayTime: 0, foodCap: 0 };
+  // DO NOT reset state.gemUpgrades – keep permanent purchases
+  state.expansionTrips = 0; state.unlockedZones = 0; state.virtualWorkers = 0; state.earlyGameBoost = BAL.earlyGameBoostDuration;
   while (workers.length > 0) { var w = workers.pop(); if (w && w.mesh) { disposeMesh(w.mesh); scene.remove(w.mesh); } }
   while (soldiers.length > 0) { var s = soldiers.pop(); if (s && s.mesh) { disposeMesh(s.mesh); scene.remove(s.mesh); } if (s && s.guardMesh) { disposeMesh(s.guardMesh); scene.remove(s.guardMesh); } }
   while (scouts.length > 0) { var sc = scouts.pop(); if (sc && sc.mesh) { disposeMesh(sc.mesh); scene.remove(sc.mesh); } }
@@ -610,13 +613,14 @@ function performAscension(apGain) {
   var ascCount = state.ascensionCount + apGain;
   var ascPoints = state.ascensionPoints + apGain;
   var ascUpgrades = JSON.parse(JSON.stringify(state.ascensionUpgrades));
+  // keep gemUpgrades (permanent)
   state.colonyName = "Colony " + (currentSlot + 1);
   state.food = BAL.baseFoodCap; state.gems = 0; state.foodCap = BAL.baseFoodCap;
   state.level = 1; state.xp = 0; state.xpToNext = Math.floor(40 * Math.pow(1.15, 0));
   state.eggs = 0; state.workerCount = 4; state.soldierCount = 0; state.scoutCount = 0;
   state.chambers = { foodStorage: { count: 0, bonusCap: 0 }, nursery: { count: 0, hatchReduction: 0 }, soldier: { count: 0 }, research: { count: 0 }, scout: { count: 0 } };
   state.upgrades = { soldierDamage: 0, workerSpeed: 0, eggLayTime: 0, foodCap: 0 };
-  state.gemUpgrades = { goldenEgg: false, soldierArmor: false, queenBless: false, scoutMap: false, goldenSkin: false };
+  state.gemUpgrades = state.gemUpgrades || {}; // keep permanent
   state.expansionTrips = 0; state.unlockedZones = 0; state.rallyActive = false; state.rallyTimer = 0; state.rallyCooldown = 0;
   state.waveActive = false; state.waveTimer = 35; state.surgeActive = false; state.surgeTimer = 60 + Math.random() * 30;
   state.eventActive = false; state.eventTimer = 35 + Math.random() * 25; state.weatherActive = false; state.weatherTimer = 70 + Math.random() * 40;
@@ -631,7 +635,8 @@ function performAscension(apGain) {
   state.prestigeCount = 0; state.prestigePoints = 0; state.prestigeUpgrades = { ppFood: 0, ppSpeed: 0, ppHatch: 0, ppCap: 0, ppGem: 0, ppBoss: 0 };
   state.prestigeFoodBonus = 0;
   state.currentZone = "forest"; state.unlockedZonesList = ["forest"];
-  state.speedBoostTimer = 0; state.beetleKills = 0; state.waspKills = 0;
+  state.speedBoostTimer = 0; state.luckyHourTimer = 0; state.defenseBannerTimer = 0;
+  state.beetleKills = 0; state.waspKills = 0;
   state.tutorialsShown = {}; state.queenClicks = 0; state.prestigeStartTime = 0; state.prestigeStartLevel = 0;
   state.dailyChallengeDate = ""; state.dailyChallengeIds = []; state.dailyProgress = { hatch5: 0, kill8: 0, food300: 0, rally2: 0, boss1: 0, zone1: 0, upgrade1: 0, build1: 0, rare1: 0, night1: 0 };
   state.lifetimeStats = { totalFood: 0, totalHatched: 0, totalKills: 0, totalBossKills: 0, totalPrestiges: 0, totalPlayTime: 0, totalGems: 0, totalRallies: 0, totalSurges: 0, totalNights: 0, fastestPrestige: 0 };
@@ -852,6 +857,32 @@ function buildScoutChamber() {
 }
 
 // =============================================
+//  SHOP CATEGORY TABS
+// =============================================
+function setupShopTabs() {
+  var tabPermanent = document.getElementById("shop-tab-permanent");
+  var tabConsumable = document.getElementById("shop-tab-consumable");
+  var tabSkins = document.getElementById("shop-tab-skins");
+  var listPermanent = document.getElementById("shop-list-permanent");
+  var listConsumable = document.getElementById("shop-list-consumable");
+  var listSkins = document.getElementById("shop-list-skins");
+
+  function showTab(tabId) {
+    listPermanent.style.display = (tabId === 'permanent') ? 'block' : 'none';
+    listConsumable.style.display = (tabId === 'consumable') ? 'block' : 'none';
+    listSkins.style.display = (tabId === 'skins') ? 'block' : 'none';
+    tabPermanent.className = (tabId === 'permanent') ? 'active' : '';
+    tabConsumable.className = (tabId === 'consumable') ? 'active' : '';
+    tabSkins.className = (tabId === 'skins') ? 'active' : '';
+  }
+
+  tabPermanent.onclick = function() { showTab('permanent'); };
+  tabConsumable.onclick = function() { showTab('consumable'); };
+  tabSkins.onclick = function() { showTab('skins'); };
+  showTab('permanent'); // default
+}
+
+// =============================================
 //  BUTTON SETUP for decluttered UI
 // =============================================
 function setupButtons() {
@@ -880,7 +911,7 @@ function setupButtons() {
   // Shop
   document.getElementById("btn-shop").onclick = function() {
     AudioManager.sfx.buttonClick();
-    if (shopPanel.classList.contains("open")) { shopPanel.classList.remove("open"); } else { closeAllPanels(); shopPanel.classList.add("open"); }
+    if (shopPanel.classList.contains("open")) { shopPanel.classList.remove("open"); } else { closeAllPanels(); shopPanel.classList.add("open"); setupShopTabs(); }
   };
   // Evolution (inside More)
   var btnEvo = document.getElementById("btn-evolution");
@@ -944,12 +975,16 @@ function setupButtons() {
   document.getElementById("btn-upg-egg").onclick = function() { buyUpgrade("eggLayTime"); };
   document.getElementById("btn-upg-cap").onclick = function() { buyUpgrade("foodCap"); };
 
-  // Gem shop buttons
-  var shopBtns = ["golden", "armor", "bless", "map", "boost", "hatch", "skin"];
-  for (var si = 0; si < shopBtns.length; si++) {
-    var sid = shopBtns[si];
-    var btn = document.getElementById("btn-shop-" + sid);
-    if (btn) btn.onclick = function(id) { return function() { buyGemItem(id); }; }(sid);
+  // Gem shop buttons (all new IDs)
+  var allShopIds = Object.keys(GEM_ITEMS);
+  for (var i = 0; i < allShopIds.length; i++) {
+    var id = allShopIds[i];
+    var btn = document.getElementById("btn-shop-" + id);
+    if (btn) {
+      btn.onclick = (function(itemId) {
+        return function() { buyGemItem(itemId); };
+      })(id);
+    }
   }
 
   // Settings, stats, roadmap, howtoplay, about (unchanged)
@@ -957,7 +992,6 @@ function setupButtons() {
   document.getElementById("btn-stats-menu").onclick = function() { AudioManager.sfx.buttonClick(); document.getElementById('stats-panel').style.display = 'flex'; refreshStatsUI(); };
   document.getElementById("btn-roadmap-menu").onclick = function() { AudioManager.sfx.buttonClick(); document.getElementById('roadmap-panel').style.display = 'flex'; refreshRoadmapUI(); };
   document.getElementById("btn-howtoplay-menu").onclick = function() { AudioManager.sfx.buttonClick(); document.getElementById('howtoplay-panel').style.display = 'flex'; };
-  document.getElementById("btn-about-menu").onclick = function() { AudioManager.sfx.buttonClick(); document.getElementById('about-modal').style.display = 'flex'; };
   document.getElementById("btn-close-settings").onclick = function() { document.getElementById('settings-panel').style.display = 'none'; };
   document.getElementById("btn-close-stats").onclick = function() { document.getElementById('stats-panel').style.display = 'none'; };
   document.getElementById("btn-close-daily").onclick = function() { document.getElementById('daily-panel').style.display = 'none'; };
@@ -975,17 +1009,17 @@ function setupButtons() {
   document.getElementById("btn-evolution").style.display = (state.level >= BAL.evolutionUnlockLevel) ? "inline-block" : "none";
   document.getElementById("btn-prestige-shop").style.display = (state.prestigeCount > 0) ? "inline-block" : "none";
   document.getElementById("btn-ascension-shop").style.display = (state.prestigeCount >= BAL.ascendUnlockPrestige || state.ascensionCount > 0) ? "inline-block" : "none";
-  // Camera buttons always visible in More panel
   document.getElementById("btn-surface").style.display = "inline-block";
   document.getElementById("btn-tunnel").style.display = "inline-block";
   document.getElementById("btn-orbit").style.display = "inline-block";
 
-  for (var si = 0; si < shopBtns.length; si++) {
-    var sid = shopBtns[si];
-    if (GEM_ITEMS[sid] && GEM_ITEMS[sid].oneTime && state.gemUpgrades[sid]) {
-      var btn = document.getElementById("btn-shop-" + sid);
+  // Disable owned shop buttons
+  for (var i = 0; i < allShopIds.length; i++) {
+    var id = allShopIds[i];
+    if (GEM_ITEMS[id].oneTime && state.gemUpgrades[id]) {
+      var btn = document.getElementById("btn-shop-" + id);
       if (btn) { btn.disabled = true; btn.textContent = "Owned"; }
     }
   }
   refreshUpgradeUI(); refreshAscensionShopUI();
-        }
+                  }
