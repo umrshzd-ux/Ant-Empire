@@ -54,7 +54,6 @@ function combatUpdate(dt) {
     }
     if (ts) {
       var dmg = BAL.spiderDamage;
-      // No defense banner reference – safe now
       ts.health -= dmg;
       spawnDamageNumber(dmg, ts.mesh.position, "#ffaa00");
       sp.attackCooldown = BAL.spiderAttackCD;
@@ -123,8 +122,10 @@ function spawnBoss() {
   scene.add(bossMesh);
   var hb = createHealthBar(bossMesh, 120, 12, 1.8);
   var hbFill = document.getElementById('boss-health-fill');
-  var colorMap = { beetle: "#888800", wasp: "#cccc00", centipede: "#886644", hydra: "#44aa44", wyrm: "#4488ff" };
-  hbFill.style.background = colorMap[bossKey] || "#cc0000";
+  if (hbFill) {
+    var colorMap = { beetle: "#888800", wasp: "#cccc00", centipede: "#886644", hydra: "#44aa44", wyrm: "#4488ff" };
+    hbFill.style.background = colorMap[bossKey] || "#cc0000";
+  }
   state.currentBoss = {
     mesh: bossMesh,
     health: bossHealth,
@@ -137,10 +138,14 @@ function spawnBoss() {
     bossKey: bossKey,
     special: bt.special || null
   };
-  document.getElementById('boss-name').textContent = bt.icon + " " + bt.name;
-  document.getElementById('boss-name').style.color = colorMap[bossKey] || "#ff4444";
-  document.getElementById('boss-name').style.display = "block";
-  document.getElementById('boss-health-bar').style.display = "block";
+  var bossNameEl = document.getElementById('boss-name');
+  if (bossNameEl) {
+    bossNameEl.textContent = bt.icon + " " + bt.name;
+    bossNameEl.style.color = (bossKey === "beetle" ? "#888800" : bossKey === "wasp" ? "#cccc00" : bossKey === "centipede" ? "#886644" : bossKey === "hydra" ? "#44aa44" : bossKey === "wyrm" ? "#4488ff" : "#ff4444");
+    bossNameEl.style.display = "block";
+  }
+  var bossBar = document.getElementById('boss-health-bar');
+  if (bossBar) bossBar.style.display = "block";
   AudioManager.sfx.bossSpawn();
   triggerShake(6, 0.5);
   showToast("💀 " + bt.name + " appeared!");
@@ -151,7 +156,8 @@ function updateBoss(dt) {
   var boss = state.currentBoss;
   var bt = BOSS_TYPES[boss.bossKey];
   state.bossHealth = boss.health;
-  document.getElementById('boss-health-fill').style.width = Math.max(0, (boss.health / boss.maxHealth) * 100) + "%";
+  var hbFill = document.getElementById('boss-health-fill');
+  if (hbFill) hbFill.style.width = Math.max(0, (boss.health / boss.maxHealth) * 100) + "%";
   var p = boss.mesh.position;
   var dx = boss.target.x - p.x, dy = boss.target.y - p.y, dz = boss.target.z - p.z;
   var dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
@@ -168,7 +174,6 @@ function updateBoss(dt) {
     for (var i = 0; i < soldiers.length; i++) {
       if (soldiers[i].mesh.position.distanceTo(p) < 2.5) {
         var dmg = BAL[bt.dmgKey];
-        // No defense banner reference
         soldiers[i].health -= dmg;
         spawnDamageNumber(dmg, soldiers[i].mesh.position, "#ff0000");
         boss.attackCooldown = 2.0;
@@ -225,8 +230,10 @@ function killBoss() {
   addFood(foodReward, boss.mesh.position);
   addGems(gemReward);
   emitParticles(boss.mesh.position, 15, bossKey === "wasp" ? 0xffff00 : (bossKey === "centipede" ? 0x886644 : 0xff4444), 0.08, 2.0, 0.8);
-  document.getElementById('boss-name').style.display = "none";
-  document.getElementById('boss-health-bar').style.display = "none";
+  var bossNameEl = document.getElementById('boss-name');
+  if (bossNameEl) bossNameEl.style.display = "none";
+  var bossBar = document.getElementById('boss-health-bar');
+  if (bossBar) bossBar.style.display = "none";
   state.bossTimer = BAL.bossIntervalMin + Math.random() * (BAL.bossIntervalMax - BAL.bossIntervalMin);
   AudioManager.sfx.bossDefeat();
   updateDailyProgress('boss1', 1);
@@ -241,4 +248,4 @@ function summonBoss() {
   state.gems -= BAL.summonCost;
   spawnBoss();
   showToast("💀 Boss summoned!");
-    }
+                                                        }
