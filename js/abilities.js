@@ -19,8 +19,7 @@ function deactivateRally() {
   applyAllWorkerSpeeds();
 }
 
-// Rally button listener is now in ui.js (after DOM refs are ready)
-// No addEventListener here – see ui.js around the rally section.
+// Rally button listener is now in ui.js
 
 // Surge button listener is now in ui.js
 // Event button listener is now in ui.js
@@ -105,4 +104,4 @@ function applyWeatherEffects(type, active) {
       updateDailyProgress('night1', 1);
     }
   }
-}
+        }
