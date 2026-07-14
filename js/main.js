@@ -2,7 +2,7 @@
 
 var container, scene, camera, renderer, hLight, sLight, fLight, raycaster;
 var gameLoopActive = false;
-var gameSystemsReady = false;   // <-- moved here to prevent any missing definition
+var gameSystemsReady = false;
 
 function initThreeJS() {
   container = document.getElementById("canvas-container");
@@ -63,6 +63,7 @@ function hideMainMenu() {
   document.getElementById('canvas-container').style.display = 'block';
 }
 
+// renderSlots with delete button (data-slot + event delegation)
 function renderSlots() {
   var slots = SaveManager.getAllSlots(), html = '';
   for (var i = 0; i < slots.length; i++) {
@@ -78,7 +79,7 @@ function renderSlots() {
                 '<div class="slot-name">🐜 ' + sl.name + '</div>' +
                 '<div class="slot-info">Lv ' + sl.level + ' | P' + sl.prestige + ' | A' + sl.ascension + ' | ' + timeAgo + '</div>' +
               '</div>' +
-              '<button class="delete-colony-btn" onclick="event.stopPropagation();showDeleteModal(' + i + ')" title="Delete colony">🗑️</button>' +
+              '<button class="delete-colony-btn" data-slot="' + i + '" title="Delete colony">🗑️</button>' +
             '</div>';
     } else {
       html += '<div class="slot-empty">+ New Colony</div>';
@@ -87,6 +88,21 @@ function renderSlots() {
   }
   document.getElementById('save-slots').innerHTML = html;
 }
+
+// Attach delete listener to the save-slots container (event delegation)
+document.addEventListener('DOMContentLoaded', function() {
+  var slotsContainer = document.getElementById('save-slots');
+  if (slotsContainer) {
+    slotsContainer.addEventListener('click', function(e) {
+      var btn = e.target.closest('.delete-colony-btn');
+      if (btn) {
+        e.stopPropagation();
+        var slot = parseInt(btn.getAttribute('data-slot'));
+        if (!isNaN(slot)) showDeleteModal(slot);
+      }
+    });
+  }
+});
 
 function showDeleteModal(slot) {
   var modal = document.getElementById('delete-modal');
@@ -132,10 +148,6 @@ window.loadSlot = function(slot) {
       showOfflineModal(offlineData);
     } else { checkDailyLogin(); }
   }, 600);
-};
-
-window.deleteSlot = function(slot) {
-  showDeleteModal(slot);
 };
 
 // Screenshake
@@ -254,7 +266,7 @@ function buyAscensionUpgrade(id) {
   saveGame();
 }
 
-// ----- Main loop (with rain throttle) -----
+// ----- Main loop (with rain throttle and safety) -----
 var eLC = 0, sC = 0, cLP = 0, storageUpdateCounter = 0, achCheckAccumulator = 0, workerRebalanceAccumulator = 0, tutorialCheckAccumulator = 0, animFrameId = null;
 
 function startGameLoop() {
@@ -280,7 +292,7 @@ function startGameLoop() {
       if (state.virtualWorkers > 0) addFood(state.virtualWorkers * BAL.virtualFoodPerSecond * dt);
       if (state.earlyGameBoost > 0) { state.earlyGameBoost -= dt; if (state.earlyGameBoost <= 0) { state.earlyGameBoost = 0; updateEggLayTime(); } }
 
-      // Rain update with throttling
+      // Rain update with throttling for performance
       if (state.weatherActive && state.weatherType === "rain") {
         if (!window._lastRainUpdate) window._lastRainUpdate = 0;
         window._lastRainUpdate += dt;
