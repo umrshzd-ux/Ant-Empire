@@ -804,28 +804,38 @@ canvas { display: block; }
 <div id="ascension-shop-panel" class="game-panel"><div style="color:#ffaa00;font-weight:700;text-align:center">⬆️ Ascension Shop</div><div id="ascension-shop-list"></div></div>
 <div id="achievements-panel" class="game-panel"><div style="color:#ffd27a;font-weight:700;text-align:center">🏆 Achievements</div><div id="ach-list"></div></div>
 
+<!-- DELETE CONFIRMATION MODAL -->
+<div id="delete-modal" class="modal-overlay">
+  <div class="modal-card">
+    <div class="modal-title">🗑️ Delete Colony?</div>
+    <div style="color:#f3e3c4;font-size:16px;margin:8px 0;">This cannot be undone. All progress will be lost.</div>
+    <button class="modal-btn primary" id="delete-confirm">Delete</button>
+    <button class="modal-btn secondary" id="delete-cancel">Cancel</button>
+  </div>
+</div>
+
 <!-- Background music -->
 <audio id="bg-music" loop style="display:none"></audio>
 
 <!-- SCRIPTS -->
-<script src="js/three.min.js?v=econ"></script>
-<script src="js/audio.js?v=econ"></script>
-<script src="js/config.js?v=econ"></script>
-<script src="js/state.js?v=econ"></script>
-<script src="js/terrain.js?v=econ"></script>
-<script src="js/main.js?v=econ"></script>
-<script src="js/camera.js?v=econ"></script>
-<script src="js/chambers.js?v=econ"></script>
-<script src="js/ants.js?v=econ"></script>
-<script src="js/enemies.js?v=econ"></script>
-<script src="js/combat.js?v=econ"></script>
-<script src="js/abilities.js?v=econ"></script>
-<script src="js/ui.js?v=econ"></script>
-<script src="js/shop.js?v=econ"></script>
-<script src="js/upgrades.js?v=econ"></script>
+<script src="js/three.min.js?v=perf-final"></script>
+<script src="js/audio.js?v=perf-final"></script>
+<script src="js/config.js?v=perf-final"></script>
+<script src="js/state.js?v=perf-final"></script>
+<script src="js/terrain.js?v=perf-final"></script>
+<script src="js/main.js?v=perf-final"></script>
+<script src="js/camera.js?v=perf-final"></script>
+<script src="js/chambers.js?v=perf-final"></script>
+<script src="js/ants.js?v=perf-final"></script>
+<script src="js/enemies.js?v=perf-final"></script>
+<script src="js/combat.js?v=perf-final"></script>
+<script src="js/abilities.js?v=perf-final"></script>
+<script src="js/ui.js?v=perf-final"></script>
+<script src="js/shop.js?v=perf-final"></script>
+<script src="js/upgrades.js?v=perf-final"></script>
 
 <script>
-// ===== DUST PARTICLES (reduced count for performance) =====
+// ===== DUST PARTICLES =====
 (function(){
   var dust=document.getElementById('dust-layer');
   for(var i=0;i<20;i++){
@@ -841,7 +851,7 @@ canvas { display: block; }
   }
 })();
 
-// ===== PARALLAX ON MOVE/TOUCH =====
+// ===== PARALLAX =====
 (function(){
   var far=document.getElementById('bg-far'), mid=document.getElementById('bg-mid'), near=document.getElementById('bg-near');
   var ox=0,oy=0;
@@ -933,4 +943,4 @@ canvas { display: block; }
   })();
 </script>
 </body>
-                                                          </html>
+       </html>
