@@ -107,12 +107,15 @@ function renderSlots() {
 window.showDeleteModal = function(slot) {
   var modal = document.getElementById('delete-modal');
   if (!modal) return;
+  var confirmBtn = document.getElementById('delete-confirm');
+  var cancelBtn = document.getElementById('delete-cancel');
+  if (!confirmBtn || !cancelBtn) return;
   modal.style.display = 'flex';
-  document.getElementById('delete-confirm').onclick = function() {
+  confirmBtn.onclick = function() {
     performDelete(slot);
     modal.style.display = 'none';
   };
-  document.getElementById('delete-cancel').onclick = function() {
+  cancelBtn.onclick = function() {
     modal.style.display = 'none';
   };
 };
@@ -130,6 +133,8 @@ function performDelete(slot) {
 window.loadSlot = function(slot) {
   var data = SaveManager.loadGame(slot);
   clearAllMeshes();
+  // Save the loaded timestamp BEFORE startGameLoop overwrites it
+  var loadedSaveTime = data ? data.lastSaveTime : Date.now();
   if (data) {
     currentSlot = slot;
     loadGameData(data);
@@ -140,9 +145,15 @@ window.loadSlot = function(slot) {
   hideMainMenu();
   initGameSystems();
   startGameLoop();
+  // Restore the original save time so offline progress calculates correctly
+  state.lastSaveTime = loadedSaveTime;
+  // Ensure bossTimer has a valid value (safety net)
+  if (!state.bossTimer || state.bossTimer <= 0) {
+    state.bossTimer = BAL.bossIntervalMin + Math.random() * (BAL.bossIntervalMax - BAL.bossIntervalMin);
+  }
   AudioManager.sfx.buttonClick();
   updateBossTimer();
-  // Ensure boss UI is hidden
+  // Force hide boss UI
   var bossName = document.getElementById('boss-name');
   if (bossName) bossName.style.display = 'none';
   var bossBar = document.getElementById('boss-health-bar');
@@ -150,7 +161,6 @@ window.loadSlot = function(slot) {
   var summonBtn = document.getElementById('summon-btn');
   if (summonBtn) summonBtn.style.display = 'none';
 
-  // Offline rewards after a short delay to allow systems to initialize
   setTimeout(function() {
     var offlineData = calculateOfflineProgress();
     if (offlineData && (offlineData.food > 0 || offlineData.eggs > 0 || offlineData.gems > 0)) {
@@ -277,7 +287,7 @@ function buyAscensionUpgrade(id) {
   saveGame();
 }
 
-// ----- Main loop (with performance optimizations) -----
+// ----- Main loop (with render outside try, performance safe) -----
 var eLC = 0, sC = 0, cLP = 0, storageUpdateCounter = 0, achCheckAccumulator = 0, workerRebalanceAccumulator = 0, tutorialCheckAccumulator = 0, animFrameId = null;
 
 function startGameLoop() {
@@ -308,9 +318,9 @@ function startGameLoop() {
       if (state.speedBoostTimer > 0) { state.speedBoostTimer -= dt; if (state.speedBoostTimer <= 0) applyAllWorkerSpeeds(); }
       if (state.luckyHourTimer > 0) { state.luckyHourTimer -= dt; }
       if (state.defenseBannerTimer > 0) { state.defenseBannerTimer -= dt; }
-      // Limit virtual worker food to prevent frame spikes
+      // Limit virtual worker food per frame
       var vwFood = state.virtualWorkers * BAL.virtualFoodPerSecond * dt;
-      if (vwFood > 50) vwFood = 50; // cap
+      if (vwFood > 50) vwFood = 50;
       if (state.virtualWorkers > 0) addFood(vwFood);
       if (state.earlyGameBoost > 0) { state.earlyGameBoost -= dt; if (state.earlyGameBoost <= 0) { state.earlyGameBoost = 0; updateEggLayTime(); } }
 
@@ -492,9 +502,12 @@ function startGameLoop() {
 
       sC += dt;
       if (sC > 10) { sC = 0; state.lastSaveTime = Date.now(); saveGame(); }
-
-      renderer.render(scene, camera);
-    } catch(e) { console.error('Loop error:', e); if (sC > 5) { sC = 0; showToast("⚠️ Minor hiccup — colony survived!"); } }
+    } catch(e) {
+      console.error('Loop error:', e);
+      if (sC > 5) { sC = 0; showToast("⚠️ Minor hiccup — colony survived!"); }
+    }
+    // Render always runs, even if update logic threw an error
+    renderer.render(scene, camera);
   }
   animate();
 }
