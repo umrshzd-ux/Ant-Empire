@@ -105,7 +105,6 @@ function showDeleteModal(slot) {
 
 function performDelete(slot) {
   SaveManager.deleteSlot(slot);
-  // If the deleted slot is the currently loaded one, reset the game to main menu
   if (currentSlot === slot) {
     currentSlot = -1;
     showMainMenu();
@@ -466,6 +465,9 @@ function startGameLoop() {
   }
   animate();
 }
+
+// ----- Init all game systems -----
+var gameSystemsReady = false;   // <-- THIS IS THE MISSING LINE
 
 function initGameSystems() {
   if (gameSystemsReady) { clearAllMeshes(); gameSystemsReady = false; }
