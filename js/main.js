@@ -77,12 +77,12 @@ function hideMainMenu() {
   if (bossBar) bossBar.style.display = 'none';
 }
 
-// ----- Save slot rendering (inline onclick for reliability) -----
+// ----- Save slot rendering (direct event listeners) -----
 function renderSlots() {
   var slots = SaveManager.getAllSlots(), html = '';
   for (var i = 0; i < slots.length; i++) {
     var sl = slots[i];
-    html += '<div class="save-slot" onclick="loadSlot(' + i + ')">';
+    html += '<div class="save-slot" data-slot="' + i + '">';
     if (sl.hasData) {
       var d = new Date(sl.lastSaved), timeAgo = 'just now', diff = Date.now() - sl.lastSaved;
       if (diff > 86400000) timeAgo = Math.floor(diff / 86400000) + 'd ago';
@@ -93,7 +93,10 @@ function renderSlots() {
                 '<div class="slot-name">🐜 ' + sl.name + '</div>' +
                 '<div class="slot-info">Lv ' + sl.level + ' | P' + sl.prestige + ' | A' + sl.ascension + ' | ' + timeAgo + '</div>' +
               '</div>' +
-              '<button class="delete-colony-btn" onclick="event.stopPropagation(); showDeleteModal(' + i + ')">🗑️</button>' +
+              '<div style="display:flex; gap:4px;">' +
+                '<button class="rename-colony-btn" data-slot="' + i + '" title="Rename colony">✏️</button>' +
+                '<button class="delete-colony-btn" data-slot="' + i + '" title="Delete colony">🗑️</button>' +
+              '</div>' +
             '</div>';
     } else {
       html += '<div class="slot-empty">+ New Colony</div>';
@@ -101,6 +104,59 @@ function renderSlots() {
     html += '</div>';
   }
   document.getElementById('save-slots').innerHTML = html;
+
+  // Attach direct event listeners
+  var saveSlotDivs = document.querySelectorAll('#save-slots .save-slot');
+  for (var j = 0; j < saveSlotDivs.length; j++) {
+    var slotDiv = saveSlotDivs[j];
+    var slotIndex = parseInt(slotDiv.getAttribute('data-slot'));
+
+    // Click on the whole card (load colony)
+    slotDiv.addEventListener('click', function(slot) {
+      return function(e) {
+        // If the click came from a button inside the card, ignore
+        if (e.target.closest('button')) return;
+        loadSlot(slot);
+      };
+    }(slotIndex));
+
+    // Delete button
+    var delBtn = slotDiv.querySelector('.delete-colony-btn');
+    if (delBtn) {
+      delBtn.addEventListener('click', function(slot) {
+        return function(e) {
+          e.stopPropagation();
+          showDeleteModal(slot);
+        };
+      }(slotIndex));
+    }
+
+    // Rename button
+    var renBtn = slotDiv.querySelector('.rename-colony-btn');
+    if (renBtn) {
+      renBtn.addEventListener('click', function(slot) {
+        return function(e) {
+          e.stopPropagation();
+          renameColony(slot);
+        };
+      }(slotIndex));
+    }
+  }
+}
+
+// Colony rename
+function renameColony(slot) {
+  var data = SaveManager.loadGame(slot);
+  if (!data) return;
+  var newName = prompt('Enter new colony name:', data.colonyName || ('Colony ' + (slot + 1)));
+  if (newName && newName.trim()) {
+    data.colonyName = newName.trim();
+    SaveManager.saveGame(slot, data);
+    if (currentSlot === slot) {
+      state.colonyName = data.colonyName;
+    }
+    renderSlots();
+  }
 }
 
 // Delete modal functions (global)
@@ -289,6 +345,7 @@ function buyAscensionUpgrade(id) {
 
 // ----- Main loop (with render outside try, performance safe) -----
 var eLC = 0, sC = 0, cLP = 0, storageUpdateCounter = 0, achCheckAccumulator = 0, workerRebalanceAccumulator = 0, tutorialCheckAccumulator = 0, animFrameId = null;
+var vwFoodAccum = 0; // accumulator for virtual worker food
 
 function startGameLoop() {
   gameLoopActive = true;
@@ -318,10 +375,17 @@ function startGameLoop() {
       if (state.speedBoostTimer > 0) { state.speedBoostTimer -= dt; if (state.speedBoostTimer <= 0) applyAllWorkerSpeeds(); }
       if (state.luckyHourTimer > 0) { state.luckyHourTimer -= dt; }
       if (state.defenseBannerTimer > 0) { state.defenseBannerTimer -= dt; }
-      // Limit virtual worker food per frame
-      var vwFood = state.virtualWorkers * BAL.virtualFoodPerSecond * dt;
-      if (vwFood > 50) vwFood = 50;
-      if (state.virtualWorkers > 0) addFood(vwFood);
+
+      // Virtual worker food (accumulate and add once per second)
+      if (state.virtualWorkers > 0) {
+        vwFoodAccum += state.virtualWorkers * BAL.virtualFoodPerSecond * dt;
+        if (vwFoodAccum >= 1) {
+          var addNow = Math.floor(vwFoodAccum);
+          vwFoodAccum -= addNow;
+          addFood(addNow);
+        }
+      }
+
       if (state.earlyGameBoost > 0) { state.earlyGameBoost -= dt; if (state.earlyGameBoost <= 0) { state.earlyGameBoost = 0; updateEggLayTime(); } }
 
       // Rain update only when raining
@@ -354,8 +418,19 @@ function startGameLoop() {
       else { state.eventTimer -= dt; if (state.eventTimer <= -15) { state.eventActive = false; eventBtn.style.display = "none"; state.eventTimer = BAL.eventIntervalMin + Math.random() * (BAL.eventIntervalMax - BAL.eventIntervalMin); } }
       updateEventTimer();
 
-      if (!state.bossActive) { state.bossTimer -= dt; if (state.bossTimer <= 0) spawnBoss(); updateSummonButton(); }
-      else { summonBtn.style.display = "none"; updateBoss(dt); }
+      // Boss logic with timer reset after spawn attempt
+      if (!state.bossActive) {
+        state.bossTimer -= dt;
+        if (state.bossTimer <= 0) {
+          spawnBoss();
+          // Reset timer regardless of success to prevent continuous attempts
+          state.bossTimer = BAL.bossIntervalMin + Math.random() * (BAL.bossIntervalMax - BAL.bossIntervalMin);
+          updateSummonButton();
+        }
+      } else {
+        summonBtn.style.display = "none";
+        updateBoss(dt);
+      }
       updateBossTimer();
 
       if (!state.weatherActive) {
@@ -395,6 +470,7 @@ function startGameLoop() {
 
       if (state.deadSoldiers > 0) { state.soldierRespawnTimer -= dt; if (state.soldierRespawnTimer <= 0) respawnSoldier(); }
 
+      // Enemies
       for (var i = enemies.length - 1; i >= 0; i--) {
         var sp = enemies[i];
         if (sp.stealing && sp.fleeTarget) {
@@ -412,8 +488,10 @@ function startGameLoop() {
         }
       }
 
+      // Eggs (limit visible eggs to 30)
       eLC += dt;
-      if (eLC >= state.eggLayTime) { eLC = 0; layEgg(); }
+      if (eLC >= state.eggLayTime && eggMs.length < 30) { eLC = 0; layEgg(); }
+      else if (eLC >= state.eggLayTime) { eLC = 0; state.eggs++; state.virtualWorkers++; }
 
       for (var i = eggMs.length - 1; i >= 0; i--) {
         var egg = eggMs[i];
@@ -433,6 +511,7 @@ function startGameLoop() {
         if (egg.hatchTimer <= 0) hatchEgg(egg, i);
       }
 
+      // Hatch FX
       for (var i = hatchFx.length - 1; i >= 0; i--) {
         var fx = hatchFx[i]; fx.life += dt; var t = fx.life / fx.maxLife;
         for (var ci = 0; ci < fx.group.children.length; ci++) {
@@ -443,6 +522,7 @@ function startGameLoop() {
         if (t >= 1) { disposeMesh(fx.group); scene.remove(fx.group); hatchFx.splice(i, 1); }
       }
 
+      // Workers, soldiers, scouts
       for (var wi = 0; wi < workers.length; wi++) updateWorker(workers[wi], dt);
       for (var si = 0; si < soldiers.length; si++) updateSoldier(soldiers[si], dt);
       for (var sci = 0; sci < scouts.length; sci++) updateScout(scouts[sci], dt);
@@ -461,10 +541,12 @@ function startGameLoop() {
       }
       combatUpdate(dt);
 
+      // Health bars
       for (var si = 0; si < soldiers.length; si++) updateHealthBar(soldiers[si].healthBar, soldiers[si].health / soldiers[si].maxHealth);
       for (var ei = 0; ei < enemies.length; ei++) updateHealthBar(enemies[ei].healthBar, enemies[ei].health / enemies[ei].maxHealth);
       if (state.bossActive && state.currentBoss) updateHealthBar(state.currentBoss.healthBar, state.currentBoss.health / state.currentBoss.maxHealth);
 
+      // Research chamber orbs
       if (researchChamberGroup && researchChamberGroup.children) {
         var time = performance.now() / 1000;
         for (var oi = 0; oi < researchChamberGroup.children.length; oi++) {
@@ -485,9 +567,9 @@ function startGameLoop() {
         if (st.markerMesh) { st.markerMesh.position.y = GTY + 1.3 + Math.sin(now / 400 + st.x) * 0.08; st.markerMesh.rotation.y += dt; }
       }
 
-      // Storage piles update throttled to every 10 seconds
+      // Storage piles update throttled (every 30 seconds)
       storageUpdateCounter += dt;
-      if (storagePilesDirty && storageUpdateCounter > 10) { storageUpdateCounter = 0; storagePilesDirty = false; updateStoragePiles(); }
+      if (storagePilesDirty && storageUpdateCounter > 30) { storageUpdateCounter = 0; storagePilesDirty = false; updateStoragePiles(); }
 
       achCheckAccumulator += dt;
       if (achCheckAccumulator > 8) { achCheckAccumulator = 0; checkAchievements(); }
