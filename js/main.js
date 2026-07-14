@@ -77,12 +77,12 @@ function hideMainMenu() {
   if (bossBar) bossBar.style.display = 'none';
 }
 
-// ----- Save slot rendering (NO inline onclick, direct listeners) -----
+// ----- Save slot rendering (inline onclick for reliability) -----
 function renderSlots() {
   var slots = SaveManager.getAllSlots(), html = '';
   for (var i = 0; i < slots.length; i++) {
     var sl = slots[i];
-    html += '<div class="save-slot" data-slot="' + i + '">';
+    html += '<div class="save-slot" onclick="loadSlot(' + i + ')">';
     if (sl.hasData) {
       var d = new Date(sl.lastSaved), timeAgo = 'just now', diff = Date.now() - sl.lastSaved;
       if (diff > 86400000) timeAgo = Math.floor(diff / 86400000) + 'd ago';
@@ -93,7 +93,7 @@ function renderSlots() {
                 '<div class="slot-name">🐜 ' + sl.name + '</div>' +
                 '<div class="slot-info">Lv ' + sl.level + ' | P' + sl.prestige + ' | A' + sl.ascension + ' | ' + timeAgo + '</div>' +
               '</div>' +
-              '<button class="delete-colony-btn" data-slot="' + i + '" title="Delete colony">🗑️</button>' +
+              '<button class="delete-colony-btn" onclick="event.stopPropagation(); showDeleteModal(' + i + ')">🗑️</button>' +
             '</div>';
     } else {
       html += '<div class="slot-empty">+ New Colony</div>';
@@ -101,36 +101,10 @@ function renderSlots() {
     html += '</div>';
   }
   document.getElementById('save-slots').innerHTML = html;
-
-  // Attach direct event listeners to each delete button and save-slot
-  var saveSlotDivs = document.querySelectorAll('#save-slots .save-slot');
-  for (var j = 0; j < saveSlotDivs.length; j++) {
-    var slotDiv = saveSlotDivs[j];
-    var slotIndex = parseInt(slotDiv.getAttribute('data-slot'));
-
-    // Click on the whole card (but NOT on the delete button)
-    slotDiv.addEventListener('click', function(slot) {
-      return function(e) {
-        // If the click came from the delete button, do nothing
-        if (e.target.closest('.delete-colony-btn')) return;
-        loadSlot(slot);
-      };
-    }(slotIndex));
-
-    // Click on the delete button inside this card
-    var delBtn = slotDiv.querySelector('.delete-colony-btn');
-    if (delBtn) {
-      delBtn.addEventListener('click', function(slot) {
-        return function(e) {
-          e.stopPropagation();
-          showDeleteModal(slot);
-        };
-      }(slotIndex));
-    }
-  }
 }
 
-function showDeleteModal(slot) {
+// Delete modal functions (global)
+window.showDeleteModal = function(slot) {
   var modal = document.getElementById('delete-modal');
   if (!modal) return;
   modal.style.display = 'flex';
@@ -141,7 +115,7 @@ function showDeleteModal(slot) {
   document.getElementById('delete-cancel').onclick = function() {
     modal.style.display = 'none';
   };
-}
+};
 
 function performDelete(slot) {
   SaveManager.deleteSlot(slot);
@@ -176,11 +150,14 @@ window.loadSlot = function(slot) {
   var summonBtn = document.getElementById('summon-btn');
   if (summonBtn) summonBtn.style.display = 'none';
 
+  // Offline rewards after a short delay to allow systems to initialize
   setTimeout(function() {
     var offlineData = calculateOfflineProgress();
     if (offlineData && (offlineData.food > 0 || offlineData.eggs > 0 || offlineData.gems > 0)) {
       showOfflineModal(offlineData);
-    } else { checkDailyLogin(); }
+    } else {
+      checkDailyLogin();
+    }
   }, 600);
 };
 
@@ -300,7 +277,7 @@ function buyAscensionUpgrade(id) {
   saveGame();
 }
 
-// ----- Main loop (with rain throttle and safety) -----
+// ----- Main loop (with performance optimizations) -----
 var eLC = 0, sC = 0, cLP = 0, storageUpdateCounter = 0, achCheckAccumulator = 0, workerRebalanceAccumulator = 0, tutorialCheckAccumulator = 0, animFrameId = null;
 
 function startGameLoop() {
@@ -308,7 +285,7 @@ function startGameLoop() {
   state.lastTime = performance.now();
   state.lastSaveTime = Date.now();
 
-  // Hide boss UI at loop start
+  // Force hide boss UI at loop start
   var bossName = document.getElementById('boss-name');
   if (bossName) bossName.style.display = 'none';
   var bossBar = document.getElementById('boss-health-bar');
@@ -331,10 +308,13 @@ function startGameLoop() {
       if (state.speedBoostTimer > 0) { state.speedBoostTimer -= dt; if (state.speedBoostTimer <= 0) applyAllWorkerSpeeds(); }
       if (state.luckyHourTimer > 0) { state.luckyHourTimer -= dt; }
       if (state.defenseBannerTimer > 0) { state.defenseBannerTimer -= dt; }
-      if (state.virtualWorkers > 0) addFood(state.virtualWorkers * BAL.virtualFoodPerSecond * dt);
+      // Limit virtual worker food to prevent frame spikes
+      var vwFood = state.virtualWorkers * BAL.virtualFoodPerSecond * dt;
+      if (vwFood > 50) vwFood = 50; // cap
+      if (state.virtualWorkers > 0) addFood(vwFood);
       if (state.earlyGameBoost > 0) { state.earlyGameBoost -= dt; if (state.earlyGameBoost <= 0) { state.earlyGameBoost = 0; updateEggLayTime(); } }
 
-      // Rain update with throttling for performance
+      // Rain update only when raining
       if (state.weatherActive && state.weatherType === "rain") {
         if (!window._lastRainUpdate) window._lastRainUpdate = 0;
         window._lastRainUpdate += dt;
@@ -495,8 +475,9 @@ function startGameLoop() {
         if (st.markerMesh) { st.markerMesh.position.y = GTY + 1.3 + Math.sin(now / 400 + st.x) * 0.08; st.markerMesh.rotation.y += dt; }
       }
 
+      // Storage piles update throttled to every 10 seconds
       storageUpdateCounter += dt;
-      if (storagePilesDirty && storageUpdateCounter > 2) { storageUpdateCounter = 0; storagePilesDirty = false; updateStoragePiles(); }
+      if (storagePilesDirty && storageUpdateCounter > 10) { storageUpdateCounter = 0; storagePilesDirty = false; updateStoragePiles(); }
 
       achCheckAccumulator += dt;
       if (achCheckAccumulator > 8) { achCheckAccumulator = 0; checkAchievements(); }
