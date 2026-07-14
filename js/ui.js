@@ -84,12 +84,15 @@ if (summonBtn) {
       if (state.bossActive) { showToast("Boss already active!"); return; }
       if (state.gems < BAL.summonCost) { showToast("Need " + BAL.summonCost + " 💎!"); return; }
       state.gems -= BAL.summonCost;
+      summonBtn.disabled = true;   // prevent double-click
       spawnBoss();
       showToast("💀 Boss summoned!");
-      refreshHUD();
+      refreshHUD();               // re‑enables/hides button based on boss state
     } catch (e) {
       console.error("Summon error:", e);
+      state.gems += BAL.summonCost; // refund
       showToast("❌ Could not summon boss. Try again.");
+      refreshHUD();
     }
   });
 }
@@ -1104,4 +1107,4 @@ function setupButtons() {
     }
   }
   refreshUpgradeUI(); refreshAscensionShopUI();
-        }
+      }
