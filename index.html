@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <title>Ant Empire: Idle Colony</title>
 <style>
 /* ============================================================
@@ -41,7 +44,6 @@ html, body {
     radial-gradient(ellipse at 30% 45%, rgba(90,50,25,0.28) 0%, transparent 50%),
     radial-gradient(ellipse at 70% 55%, rgba(70,40,20,0.22) 0%, transparent 45%),
     radial-gradient(circle at 40% 70%, rgba(50,30,15,0.18) 0%, transparent 40%),
-    /* Distant glowing chambers */
     radial-gradient(ellipse at 80% 30%, rgba(255,160,40,0.14) 0%, transparent 20%),
     radial-gradient(ellipse at 20% 60%, rgba(255,140,30,0.1) 0%, transparent 15%);
   z-index: 2;
@@ -52,21 +54,19 @@ html, body {
     radial-gradient(ellipse at 25% 80%, rgba(100,55,30,0.22) 0%, transparent 35%),
     radial-gradient(ellipse at 75% 20%, rgba(80,45,22,0.2) 0%, transparent 30%),
     radial-gradient(circle at 50% 90%, rgba(40,20,10,0.45) 0%, transparent 50%),
-    /* Small rocks & pebbles */
     radial-gradient(3px 3px at 12% 88%, rgba(110,65,30,0.6), transparent),
     radial-gradient(4px 4px at 85% 15%, rgba(120,70,35,0.5), transparent),
     radial-gradient(2px 2px at 48% 24%, rgba(95,55,28,0.55), transparent),
     radial-gradient(5px 5px at 65% 78%, rgba(105,60,30,0.5), transparent),
     radial-gradient(3px 3px at 35% 65%, rgba(110,62,32,0.45), transparent),
     radial-gradient(4px 4px at 78% 55%, rgba(100,58,28,0.5), transparent),
-    /* Moss patches */
     radial-gradient(ellipse at 20% 75%, rgba(60,100,40,0.15) 0%, transparent 25%),
     radial-gradient(ellipse at 80% 85%, rgba(50,90,35,0.12) 0%, transparent 20%),
     radial-gradient(ellipse at 45% 18%, rgba(55,95,38,0.1) 0%, transparent 18%);
   z-index: 3;
 }
 
-/* Detailed soil texture – many tiny specs for realism */
+/* Detailed soil texture */
 #soil-texture {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 4;
   background-image:
@@ -94,22 +94,19 @@ html, body {
   opacity: 0.75;
 }
 
-/* Tunnels – deeper entrances with faint glow */
+/* Tunnels */
 #tunnels {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5;
   background:
-    /* Main tunnel opening */
     radial-gradient(ellipse at 50% 85%, rgba(5,2,1,0.98) 0%, transparent 45%),
-    /* Side tunnels */
     radial-gradient(ellipse at 25% 70%, rgba(8,3,1,0.95) 0%, transparent 35%),
     radial-gradient(ellipse at 75% 65%, rgba(6,2,1,0.95) 0%, transparent 30%),
-    /* Small warm light at end of tunnels */
     radial-gradient(ellipse at 50% 82%, rgba(255,180,60,0.18) 0%, transparent 25%),
     radial-gradient(ellipse at 25% 67%, rgba(255,160,40,0.12) 0%, transparent 20%),
     radial-gradient(ellipse at 75% 62%, rgba(255,170,45,0.12) 0%, transparent 18%);
 }
 
-/* Tree roots – thicker, more pronounced */
+/* Tree roots */
 #roots {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 6;
   background:
@@ -119,7 +116,7 @@ html, body {
     linear-gradient(80deg, transparent 72%, rgba(50,25,12,0.4) 73%, rgba(65,32,16,0.5) 75%, transparent 76%);
 }
 
-/* God rays – warm light shafts */
+/* God rays */
 #god-rays {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 7;
   background:
@@ -134,7 +131,7 @@ html, body {
   100% { opacity: 0.7; transform: scale(1); }
 }
 
-/* Dust particles – fewer for performance, still atmospheric */
+/* Dust particles */
 #dust-layer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 8; }
 .dust {
   position: absolute; background: radial-gradient(circle, rgba(255,200,140,0.3) 0%, transparent 70%);
@@ -148,13 +145,13 @@ html, body {
   100% { transform: translate(30px,-140px) scale(0.3); opacity: 0; }
 }
 
-/* Vignette – dark edges */
+/* Vignette */
 #vignette {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9;
   background: radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,0.75) 100%);
 }
 
-/* Cave glow – breathing warm light from below */
+/* Cave glow */
 #cave-glow {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;
   background:
@@ -202,7 +199,7 @@ canvas { display: block; }
 #top-left, #top-right { display: flex; flex-direction: column; gap: 4px; }
 
 /* ============================================================
-   ALERTS & RESOURCES DROPDOWNS – with close button
+   ALERTS & RESOURCES DROPDOWNS
    ============================================================ */
 #alerts-panel, #resources-panel {
   position: absolute; z-index: 40;
@@ -321,118 +318,135 @@ canvas { display: block; }
 #loading .loading-msg { color: #aa8855; font-size: 14px; font-weight: 500; }
 
 /* ============================================================
-   MAIN MENU – PREMIUM 3D CAVE SCENE (REDESIGNED)
+   MAIN MENU – PREMIUM 2026 REDESIGN
    ============================================================ */
 #main-menu {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 60;
   display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
-  color: #f3e3c4; gap: 16px; padding: 50px 20px 30px;
+  color: #f3e3c4; gap: 20px; padding: 60px 20px 40px;
   overflow-y: auto; -webkit-overflow-scrolling: touch;
-  background: transparent;
+  background: radial-gradient(circle at 50% 30%, rgba(30,15,5,0.95) 0%, rgba(5,2,1,0.98) 90%);
+  backdrop-filter: blur(20px);
 }
 #main-menu .menu-title {
-  font-size: 44px; font-weight: 900;
+  font-size: 52px; font-weight: 900; letter-spacing: -2px;
   background: linear-gradient(180deg, #ffe8b0 0%, #e0b860 30%, #c99030 70%, #a07020 100%);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 3px 8px rgba(0,0,0,0.6)) drop-shadow(0 0 20px rgba(255,170,50,0.5));
-  margin-bottom: 2px; letter-spacing: -1px;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.8)) drop-shadow(0 0 20px rgba(255,170,50,0.7));
+  margin-bottom: 0px;
+  position: relative;
+}
+#main-menu .menu-title::after {
+  content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.4) 0%, transparent 50%);
+  pointer-events: none;
 }
 #main-menu .menu-subtitle {
-  font-size: 16px; color: #c9a96e; opacity: 0.9; margin-bottom: 24px;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.6); letter-spacing: 1px;
+  font-size: 18px; color: #c9a96e; letter-spacing: 2px;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.7);
+  margin-bottom: 30px;
 }
 
-/* Save slots – premium card */
+/* Colony Cards – 3D glass panels */
 .save-slot {
-  width: 290px;
-  background: linear-gradient(180deg, rgba(55,30,15,0.9), rgba(25,12,6,0.9));
-  border: 2px solid rgba(200,150,80,0.5);
-  border-radius: 20px; padding: 18px 20px; cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.25,0.8,0.25,1.2);
+  width: 320px;
+  background: linear-gradient(180deg, rgba(55,30,15,0.85) 0%, rgba(25,12,6,0.9) 100%);
+  border: 2px solid rgba(200,150,80,0.6);
+  border-radius: 24px;
+  padding: 20px 24px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
   box-shadow:
-    0 8px 24px rgba(0,0,0,0.6),
-    0 0 16px rgba(180,120,50,0.12),
-    inset 0 2px 0 rgba(255,220,150,0.15),
-    0 0 0 1px rgba(255,200,100,0.3);
-  position: relative; overflow: hidden;
-  backdrop-filter: blur(4px);
+    0 12px 32px rgba(0,0,0,0.7),
+    0 0 20px rgba(180,120,50,0.15),
+    inset 0 2px 0 rgba(255,220,150,0.25),
+    inset 0 -2px 0 rgba(0,0,0,0.5),
+    0 0 0 1px rgba(255,200,100,0.4);
+  backdrop-filter: blur(8px);
+  transition: transform 0.25s cubic-bezier(0.25,0.8,0.25,1.2), box-shadow 0.25s;
 }
 .save-slot::before {
   content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
-  background: radial-gradient(circle, rgba(255,200,100,0.25) 0%, transparent 60%);
-  opacity: 0; transition: opacity 0.4s;
+  background: radial-gradient(circle, rgba(255,200,100,0.3) 0%, transparent 60%);
+  opacity: 0; transition: opacity 0.3s;
 }
 .save-slot:hover::before { opacity: 1; }
 .save-slot:hover {
-  transform: translateY(-6px);
+  transform: translateY(-8px);
   border-color: #ffb700;
   box-shadow:
-    0 14px 36px rgba(255,180,80,0.3),
-    0 8px 24px rgba(0,0,0,0.6),
-    inset 0 2px 0 rgba(255,220,150,0.2),
-    0 0 0 1px rgba(255,200,100,0.4);
+    0 20px 48px rgba(255,180,80,0.4),
+    0 12px 32px rgba(0,0,0,0.7),
+    inset 0 2px 0 rgba(255,220,150,0.3),
+    inset 0 -2px 0 rgba(0,0,0,0.5),
+    0 0 0 1px rgba(255,200,100,0.6);
 }
 .save-slot:active { transform: scale(0.96); }
-.save-slot .slot-name { font-size: 19px; font-weight: 800; color: #ffd27a; text-shadow: 0 1px 3px rgba(0,0,0,0.5); }
-.save-slot .slot-info { font-size: 13px; color: #bb9966; margin-top: 4px; }
-.save-slot .slot-empty { font-size: 16px; color: #777; font-style: italic; }
+.save-slot .slot-name {
+  font-size: 22px; font-weight: 800; color: #ffd27a;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.6);
+}
+.save-slot .slot-info {
+  font-size: 14px; color: #bb9966; margin-top: 4px;
+}
+.save-slot .slot-empty {
+  font-size: 18px; color: #777; font-style: italic; text-align: center; padding: 20px 0;
+}
 
-/* Delete button inside save slot */
+/* Delete button inside card */
 .save-slot .delete-colony-btn {
   background: rgba(255,80,80,0.15);
-  border: 1px solid rgba(255,100,100,0.6);
+  border: 1px solid rgba(255,100,100,0.7);
   color: #ff6666;
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 14px;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 15px;
   cursor: pointer;
   transition: background 0.2s;
-  margin-left: auto;
-  min-width: 44px;
-  min-height: 44px;
+  min-width: 48px;
+  min-height: 48px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.4);
 }
-.save-slot .delete-colony-btn:hover {
-  background: rgba(255,80,80,0.35);
-}
-.save-slot .delete-colony-btn:active {
-  transform: scale(0.95);
-}
+.save-slot .delete-colony-btn:hover { background: rgba(255,80,80,0.35); }
+.save-slot .delete-colony-btn:active { transform: scale(0.95); }
 
-/* Menu buttons – 3D glossy */
+/* Menu Buttons – 3D metallic */
 .menu-btn {
-  padding: 15px 34px; border: none; border-radius: 16px;
+  padding: 18px 40px; border: none; border-radius: 18px;
   background: linear-gradient(180deg, #f3d08c 0%, #c48e4a 40%, #9b6b2e 100%);
-  color: #1c1005; font-size: 17px; font-weight: 800; cursor: pointer;
+  color: #1c1005; font-size: 19px; font-weight: 800; cursor: pointer;
   box-shadow:
-    0 8px 20px rgba(0,0,0,0.6),
-    0 0 16px rgba(200,140,60,0.3),
-    inset 0 1px 0 rgba(255,255,220,0.4),
-    inset 0 -2px 0 rgba(80,40,15,0.6),
-    0 0 0 1px rgba(255,200,100,0.5);
+    0 10px 24px rgba(0,0,0,0.7),
+    0 0 20px rgba(200,140,60,0.4),
+    inset 0 2px 0 rgba(255,255,220,0.5),
+    inset 0 -3px 0 rgba(80,40,15,0.7),
+    0 0 0 2px rgba(255,200,100,0.6);
   transition: all 0.15s cubic-bezier(0.25,0.8,0.25,1.2);
   position: relative; overflow: hidden;
   text-shadow: 0 1px 0 rgba(255,255,200,0.5);
+  letter-spacing: 1px;
 }
 .menu-btn::after {
-  content: ''; position: absolute; top: 3px; left: 10%; width: 80%; height: 40%;
-  background: linear-gradient(180deg, rgba(255,255,255,0.35), transparent);
+  content: ''; position: absolute; top: 4px; left: 10%; width: 80%; height: 40%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.4), transparent);
   border-radius: 50%;
 }
 .menu-btn:hover {
   transform: scale(1.05);
   box-shadow:
-    0 12px 28px rgba(200,140,60,0.4),
-    0 8px 20px rgba(0,0,0,0.6),
-    inset 0 1px 0 rgba(255,255,220,0.5),
-    inset 0 -2px 0 rgba(80,40,15,0.5),
-    0 0 0 1px rgba(255,200,100,0.6);
+    0 14px 36px rgba(200,140,60,0.5),
+    0 10px 28px rgba(0,0,0,0.8),
+    inset 0 2px 0 rgba(255,255,220,0.6),
+    inset 0 -3px 0 rgba(80,40,15,0.6),
+    0 0 0 2px rgba(255,200,100,0.8);
 }
 .menu-btn:active {
-  transform: scale(0.94) translateY(2px);
+  transform: scale(0.94) translateY(3px);
   box-shadow:
-    0 4px 8px rgba(0,0,0,0.8),
-    inset 0 4px 6px rgba(0,0,0,0.4),
-    inset 0 -1px 0 rgba(255,255,200,0.2);
+    0 4px 8px rgba(0,0,0,0.9),
+    inset 0 5px 8px rgba(0,0,0,0.5),
+    inset 0 -1px 0 rgba(255,255,200,0.3);
 }
 
 /* ============================================================
@@ -945,4 +959,4 @@ canvas { display: block; }
   })();
 </script>
 </body>
-     </html>
+   </html>
