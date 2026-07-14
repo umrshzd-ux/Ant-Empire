@@ -165,9 +165,8 @@ function buildTerrain() {
   }
 }
 
-// ===== MUSHROOMS (reduced to 6, no per‑frame emissive update unless needed) =====
+// ===== MUSHROOMS (reduced to 6) =====
 var mushroomMeshes = [], mushroomLights = [];
-var _lastNightProgress = -1;  // cached value to avoid redundant updates
 function initMushrooms() {
   for (var mi = 0; mi < 6; mi++) {
     var mx = -SW / 2 + 4 + Math.random() * (SW - 8);
@@ -284,4 +283,4 @@ function initFoodStations() {
     st.markerMesh = m;
     makeLabel("🌾 " + st.label, st.x, GTY + 2.2, st.z, 256, 64, false);
   }
-                                                                         }
+         }
