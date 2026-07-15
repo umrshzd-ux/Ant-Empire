@@ -58,7 +58,8 @@ function createSpider() {
     target: ER.clone(),
     attackCooldown: 0,
     stealing: false,
-    fleeTarget: null
+    fleeTarget: null,
+    _stuckTimer: 0  // safety for stuck spiders
   };
   enemies.push(sp);
   return sp;
@@ -76,7 +77,10 @@ function killSpider(sp) {
   state.lifetimeStats.totalKills++;
   AudioManager.sfx.spiderDeath();
   updateDailyProgress('kill8', 1);
-  if (state.waveActive && state.waveSpidersRemaining > 0) state.waveSpidersRemaining--;
+  // Decrement wave spider count to allow wave to end
+  if (state.waveActive && state.waveSpidersRemaining > 0) {
+    state.waveSpidersRemaining--;
+  }
   checkAchievements();
 }
 
