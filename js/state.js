@@ -91,7 +91,14 @@ var state = {
   ascensionCount: 0, ascensionPoints: 0,
   ascensionUpgrades: { goldenQueen: 0, eternalHatch: 0, monarchMight: 0, elderWisdom: 0 },
   caveBossKills: 0, swampBossKills: 0, mountainBossKills: 0,
-  hasAscended: false
+  hasAscended: false,
+
+  // Engagement systems
+  buildQueue: [],
+  prestigeGoal: null,
+  prestigeGoalSelected: false,
+  eventChoices: [],
+  eventChoiceActive: false
 };
 var queenScale = BAL.queenBaseScale;
 state.lastTime = performance.now();
@@ -152,6 +159,12 @@ function resetStateToDefault(slot) {
   if (!state.bossTimer || state.bossTimer <= 0) {
     state.bossTimer = BAL.bossIntervalMin + Math.random() * (BAL.bossIntervalMax - BAL.bossIntervalMin);
   }
+  // Engagement reset
+  state.buildQueue = [];
+  state.prestigeGoal = null;
+  state.prestigeGoalSelected = false;
+  state.eventChoices = [];
+  state.eventChoiceActive = false;
   recalculateHatchTime();
   updateEggLayTime();
   recalculateFoodCap();
@@ -183,12 +196,20 @@ function recalculateHatchTime() {
   if (state.evolution.worker >= 3) base -= EVOLUTION_TREE.worker.tiers[2].effect.hatchReduction;
   base -= state.chambers.nursery.hatchReduction;
   if (state.ascensionUpgrades.eternalHatch > 0) base = 0;
+  // Food high hatch boost
+  if (state.food / state.foodCap > BAL.foodHighThreshold) {
+    base *= (1 - BAL.foodTensionHatchBoost);
+  }
   state.hatchTime = Math.max(0, base);
 }
 function updateEggLayTime() {
   var extra = Math.max(0, state.workerCount - 4);
   var blessing = state.gemUpgrades.queenBless ? 5 : 0;
   var baseTime = state.earlyGameBoost > 0 ? BAL.baseEggLayTime * BAL.earlyGameEggMultiplier : BAL.baseEggLayTime;
+  // Food high hatch boost (lay eggs faster)
+  if (state.food / state.foodCap > BAL.foodHighThreshold) {
+    baseTime *= (1 - BAL.foodTensionHatchBoost);
+  }
   state.eggLayTime = Math.max(2, baseTime + extra * BAL.eggLayTimePerWorker - state.upgrades.eggLayTime * UPGRADES.eggLayTime.effect - blessing);
 }
 function recalculateFoodCap() {
@@ -218,6 +239,11 @@ function getEffectiveWorkerSpeed() {
   if (state.prestigeUpgrades.ppSpeed) base *= 1 + state.prestigeUpgrades.ppSpeed * 0.1;
   if (state.speedBoostTimer > 0) base *= 2;
   if (state.ascensionUpgrades.goldenQueen > 0) base *= 2;
+  // Food tension slowdown
+  var foodRatio = state.food / Math.max(1, state.foodCap);
+  if (foodRatio < BAL.foodLowThreshold) {
+    base *= (BAL.foodTensionMaxSlowdown + (1 - BAL.foodTensionMaxSlowdown) * (foodRatio / BAL.foodLowThreshold));
+  }
   return base;
 }
 function getEffectiveScoutSpeed() {
@@ -317,7 +343,6 @@ function loadGameData(data) {
   if (data.currentZone) state.currentZone = data.currentZone;
   if (data.unlockedZonesList) state.unlockedZonesList = data.unlockedZonesList;
   if (data.bossTimer !== undefined) state.bossTimer = data.bossTimer;
-  // Safety: ensure bossTimer is valid after load
   if (!state.bossTimer || state.bossTimer <= 0) {
     state.bossTimer = BAL.bossIntervalMin + Math.random() * (BAL.bossIntervalMax - BAL.bossIntervalMin);
   }
@@ -337,6 +362,13 @@ function loadGameData(data) {
   if (data.speedBoostTimer !== undefined) state.speedBoostTimer = data.speedBoostTimer;
   if (data.luckyHourTimer !== undefined) state.luckyHourTimer = data.luckyHourTimer;
   if (data.defenseBannerTimer !== undefined) state.defenseBannerTimer = data.defenseBannerTimer;
+  // Engagement systems
+  if (data.buildQueue) state.buildQueue = data.buildQueue;
+  else state.buildQueue = [];
+  state.prestigeGoal = data.prestigeGoal || null;
+  state.prestigeGoalSelected = data.prestigeGoalSelected || false;
+  state.eventChoices = [];
+  state.eventChoiceActive = false;
   state.xpToNext = Math.floor(40 * Math.pow(1.15, state.level - 1));
   recalculateHatchTime();
   updateEggLayTime();
@@ -362,4 +394,4 @@ function addGems(amount) {
   state.totalGemsEarned += amount;
   state.lifetimeStats.totalGems = (state.lifetimeStats.totalGems || 0) + amount;
   showToast("+" + amount + "💎");
-  }
+    }
