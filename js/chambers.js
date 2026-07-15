@@ -100,7 +100,6 @@ function updateStoragePiles() {
   var fillRatio = Math.min(1, state.food / Math.max(1, state.foodCap));
   for (var si = 0; si < storagePiles.length; si++) {
     var pile = storagePiles[si];
-    // Properly dispose old children to prevent memory leak
     while (pile.children.length > 0) {
       var child = pile.children[0];
       disposeMesh(child);
@@ -118,7 +117,6 @@ function updateStoragePiles() {
 function updateNurseryClusters() {
   for (var ci = 0; ci < nurseryEggClusters.length; ci++) {
     var cluster = nurseryEggClusters[ci];
-    // Properly dispose old children
     while (cluster.children.length > 0) {
       var child = cluster.children[0];
       disposeMesh(child);
@@ -207,12 +205,19 @@ function addStockpileCrumb() {
 }
 
 function rebuildAllChambers() {
+  // Dispose old guard meshes before clearing the array
+  for (var bi = 0; bi < barracksSoldiers.length; bi++) {
+    disposeMesh(barracksSoldiers[bi]);
+    scene.remove(barracksSoldiers[bi]);
+  }
+  barracksSoldiers = [];
+
   while (storageChambers.length > 0) { var ch = storageChambers.pop(); if (ch) { disposeMesh(ch); scene.remove(ch); } }
   while (nurseryChambers.length > 0) { var ch = nurseryChambers.pop(); if (ch) { disposeMesh(ch); scene.remove(ch); } }
   while (soldierChambers.length > 0) { var ch = soldierChambers.pop(); if (ch && ch.mesh) { disposeMesh(ch.mesh); scene.remove(ch.mesh); } }
   while (researchChambers.length > 0) { var ch = researchChambers.pop(); if (ch && ch.mesh) { disposeMesh(ch.mesh); scene.remove(ch.mesh); } }
   while (scoutChambers.length > 0) { var ch = scoutChambers.pop(); if (ch && ch.mesh) { disposeMesh(ch.mesh); scene.remove(ch.mesh); } }
-  barracksSoldiers = [];
+
   for (var rbi = 0; rbi < state.chambers.foodStorage.count; rbi++) {
     var chX = TX + 5 + rbi * 3.5;
     storageChambers.push(makeChamber(chX, CCY, CZ, 3, 2, 4, 0x5a4020));
@@ -251,4 +256,4 @@ function rebuildAllChambers() {
     }
     scene.add(researchChamberGroup);
   }
-            }
+                       }
