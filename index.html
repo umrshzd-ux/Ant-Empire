@@ -398,19 +398,19 @@ canvas { display: block; }
   cursor: pointer;
 }
 
-/* Action buttons inside card */
-.play-colony-btn, .rename-colony-btn, .delete-colony-btn {
-  padding: 10px 14px;
+/* Action buttons inside card – wider, nowrap */
+.slot-action-btn {
+  padding: 10px 16px;
   border-radius: 12px;
   font-weight: 700;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.15s;
-  min-width: 60px;
+  min-width: 80px;
   border: none;
   box-shadow: 0 4px 10px rgba(0,0,0,0.5);
   color: #1c1005;
-  background: linear-gradient(180deg, #f3d08c, #c48e4a);
+  white-space: nowrap;
 }
 .play-colony-btn { background: linear-gradient(180deg, #f3d08c, #c48e4a); }
 .play-colony-btn:active { transform: scale(0.95); }
@@ -577,6 +577,7 @@ canvas { display: block; }
   font-size: 18px;
   text-align: center;
   margin: 10px 0;
+  pointer-events: auto;
 }
 #rename-input:focus {
   outline: none;
@@ -967,4 +968,4 @@ canvas { display: block; }
   })();
 </script>
 </body>
-                                                 </html>
+       </html>
