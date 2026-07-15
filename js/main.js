@@ -4,6 +4,7 @@ var container, scene, camera, renderer, hLight, sLight, fLight, raycaster;
 var gameLoopActive = false;
 var gameSystemsReady = false;
 var gamePaused = false;
+var _lastRainUpdate = 0;  // module-scoped rain throttle
 
 function initThreeJS() {
   container = document.getElementById("canvas-container");
@@ -336,7 +337,7 @@ function buyAscensionUpgrade(id) {
   saveGame();
 }
 
-// ----- Main loop (with pause, build queue, food tension, reactive events) -----
+// ----- Main loop (with isolated error handling) -----
 var eLC = 0, sC = 0, cLP = 0, storageUpdateCounter = 0, achCheckAccumulator = 0, workerRebalanceAccumulator = 0, tutorialCheckAccumulator = 0, animFrameId = null;
 var vwFoodAccum = 0;
 
@@ -359,10 +360,13 @@ function startGameLoop() {
 
     if (gamePaused) return;
 
+    var now = performance.now();
+    var dt = (now - state.lastTime) / 1000;
+    dt = Math.min(dt, 0.1);
+    state.lastTime = now;
+
+    // Safe updates (timers, basic state)
     try {
-      var now = performance.now();
-      var dt = (now - state.lastTime) / 1000; dt = Math.min(dt, 0.1);
-      state.lastTime = now;
       state.lifetimeStats.totalPlayTime = (state.lifetimeStats.totalPlayTime || 0) + dt;
 
       if (typeof updateInertia === 'function') updateInertia(dt);
@@ -372,7 +376,6 @@ function startGameLoop() {
       if (state.luckyHourTimer > 0) { state.luckyHourTimer -= dt; }
       if (state.defenseBannerTimer > 0) { state.defenseBannerTimer -= dt; }
 
-      // Virtual worker food (accumulate and add once per second)
       if (state.virtualWorkers > 0) {
         vwFoodAccum += state.virtualWorkers * BAL.virtualFoodPerSecond * dt;
         if (vwFoodAccum >= 1) {
@@ -399,13 +402,14 @@ function startGameLoop() {
           state.buildQueue.shift();
         }
       }
+    } catch(e) { console.error('General update error:', e); }
 
-      // Rain update
+    // Rain update (isolated)
+    try {
       if (state.weatherActive && state.weatherType === "rain") {
-        if (!window._lastRainUpdate) window._lastRainUpdate = 0;
-        window._lastRainUpdate += dt;
-        if (window._lastRainUpdate >= 0.03) {
-          window._lastRainUpdate = 0;
+        _lastRainUpdate += dt;
+        if (_lastRainUpdate >= 0.03) {
+          _lastRainUpdate = 0;
           for (var ri = 0; ri < rainDrops.length; ri++) {
             var drop = rainDrops[ri]; if (!drop.visible) continue;
             drop.position.y -= drop.userData.speed * dt;
@@ -413,7 +417,10 @@ function startGameLoop() {
           }
         }
       }
+    } catch(e) { console.error('Rain error:', e); }
 
+    // Rally, wave, events, boss (isolated)
+    try {
       if (state.rallyActive) { state.rallyTimer -= dt; if (state.rallyTimer <= 0) deactivateRally(); }
       if (state.rallyCooldown > 0) { state.rallyCooldown -= dt; if (state.rallyCooldown <= 0) state.rallyCooldown = 0; }
       if (typeof rallyOverlay !== 'undefined') {
@@ -440,6 +447,7 @@ function startGameLoop() {
             state.eventChoices = rev.choices;
             state.eventChoiceActive = true;
             state.eventActive = true;
+            state.eventTimer = BAL.eventIntervalMin + Math.random() * (BAL.eventIntervalMax - BAL.eventIntervalMin); // safety reset
             showReactiveEventUI(rev);
           } else {
             // Fallback classic event
@@ -470,8 +478,10 @@ function startGameLoop() {
         updateBoss(dt);
       }
       updateBossTimer();
+    } catch(e) { console.error('Wave/event/boss error:', e); }
 
-      // Weather logic
+    // Weather logic (isolated)
+    try {
       if (!state.weatherActive) {
         state.weatherTimer -= dt;
         if (state.weatherTimer <= 0) {
@@ -497,7 +507,10 @@ function startGameLoop() {
           checkAchievements();
         }
       }
+    } catch(e) { console.error('Weather error:', e); }
 
+    // Surge, soldier respawn (safe)
+    try {
       if (!state.surgeActive) {
         state.surgeTimer -= dt;
         if (state.surgeTimer <= 0) {
@@ -507,14 +520,17 @@ function startGameLoop() {
           setTimeout(function() { if (state.surgeActive) { state.surgeActive = false; surgeBtn.style.display = "none"; } }, BAL.surgeDuration * 1000);
         }
       }
-
       if (state.deadSoldiers > 0) { state.soldierRespawnTimer -= dt; if (state.soldierRespawnTimer <= 0) respawnSoldier(); }
+    } catch(e) { console.error('Surge/respawn error:', e); }
 
-      // Enemies
+    // Enemies (flee loop with safety checks)
+    try {
       for (var i = enemies.length - 1; i >= 0; i--) {
         var sp = enemies[i];
-        if (sp.stealing && sp.fleeTarget) {
+        if (!sp || !sp.mesh) { enemies.splice(i, 1); continue; }
+        if (sp.stealing && sp.fleeTarget && !isNaN(sp.fleeTarget.x)) {
           var p = sp.mesh.position, t = sp.fleeTarget;
+          if (!p || isNaN(p.x)) { disposeMesh(sp.mesh); scene.remove(sp.mesh); enemies.splice(i, 1); continue; }
           var dx = t.x - p.x, dz = t.z - p.z;
           var dist = Math.sqrt(dx * dx + dz * dz);
           if (dist < 0.5 || sp.mesh.position.distanceTo(ER) > BAL.spiderFleeDistance) {
@@ -525,16 +541,26 @@ function startGameLoop() {
           var step = Math.min(sp.speed * 1.5 * dt, dist);
           p.x += (dx / dist) * step; p.z += (dz / dist) * step;
           sp.mesh.rotation.y = Math.atan2(dx, dz);
+        } else if (sp.stealing && !sp.fleeTarget) {
+          // stuck stealing spider – remove after 5 seconds
+          sp._stuckTimer = (sp._stuckTimer || 0) + dt;
+          if (sp._stuckTimer > 5) {
+            disposeMesh(sp.mesh); scene.remove(sp.mesh); enemies.splice(i, 1);
+            if (state.waveActive && state.waveSpidersRemaining > 0) state.waveSpidersRemaining--;
+          }
         }
       }
+    } catch(e) { console.error('Enemy flee error:', e); }
 
-      // Eggs
+    // Eggs (isolated)
+    try {
       eLC += dt;
       if (eLC >= state.eggLayTime && eggMs.length < 30) { eLC = 0; layEgg(); }
       else if (eLC >= state.eggLayTime) { eLC = 0; state.eggs++; state.virtualWorkers++; }
 
       for (var i = eggMs.length - 1; i >= 0; i--) {
         var egg = eggMs[i];
+        if (!egg || !egg.mesh) continue;
         if (egg.settling) {
           egg.settleT += dt / 0.4;
           var t = Math.min(1, egg.settleT), e = 1 - Math.pow(1 - t, 3);
@@ -550,10 +576,13 @@ function startGameLoop() {
         egg.mat.emissive.setHex(0xffcc66); egg.mat.emissiveIntensity = u * 0.6;
         if (egg.hatchTimer <= 0) hatchEgg(egg, i);
       }
+    } catch(e) { console.error('Egg error:', e); }
 
-      // Hatch FX
+    // Hatch FX (isolated)
+    try {
       for (var i = hatchFx.length - 1; i >= 0; i--) {
-        var fx = hatchFx[i]; fx.life += dt; var t = fx.life / fx.maxLife;
+        var fx = hatchFx[i]; if (!fx || !fx.group) continue;
+        fx.life += dt; var t = fx.life / fx.maxLife;
         for (var ci = 0; ci < fx.group.children.length; ci++) {
           var s = fx.group.children[ci];
           s.position.x += s.userData.dir.x * dt * 1.2; s.position.y += s.userData.dir.y * dt * 1.2; s.position.z += s.userData.dir.z * dt * 1.2;
@@ -561,32 +590,54 @@ function startGameLoop() {
         }
         if (t >= 1) { disposeMesh(fx.group); scene.remove(fx.group); hatchFx.splice(i, 1); }
       }
+    } catch(e) { console.error('HatchFX error:', e); }
 
-      // Workers, soldiers, scouts
+    // Workers, soldiers, scouts (isolated)
+    try {
       for (var wi = 0; wi < workers.length; wi++) updateWorker(workers[wi], dt);
       for (var si = 0; si < soldiers.length; si++) updateSoldier(soldiers[si], dt);
       for (var sci = 0; sci < scouts.length; sci++) updateScout(scouts[sci], dt);
+    } catch(e) { console.error('Worker/soldier/scout error:', e); }
+
+    // Enemy movement (non-stealing) (isolated)
+    try {
       for (var ei = 0; ei < enemies.length; ei++) {
         var e = enemies[ei];
-        if (!e.stealing) {
-          var p = e.mesh.position;
-          var dx = e.target.x - p.x, dy = e.target.y - p.y, dz = e.target.z - p.z;
-          var dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-          if (dist > 0.5) {
-            var step = Math.min(e.speed * dt, dist);
-            p.x += (dx / dist) * step; p.y += (dy / dist) * step; p.z += (dz / dist) * step;
-            e.mesh.rotation.y = Math.atan2(dx, dz);
-          }
+        if (!e || !e.mesh || e.stealing) continue;
+        var p = e.mesh.position;
+        if (!p || isNaN(p.x)) continue;
+        var dx = e.target.x - p.x, dy = e.target.y - p.y, dz = e.target.z - p.z;
+        var dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (dist > 0.5) {
+          var step = Math.min(e.speed * dt, dist);
+          p.x += (dx / dist) * step; p.y += (dy / dist) * step; p.z += (dz / dist) * step;
+          e.mesh.rotation.y = Math.atan2(dx, dz);
         }
       }
+    } catch(e) { console.error('Enemy movement error:', e); }
+
+    // Combat (isolated)
+    try {
       combatUpdate(dt);
+    } catch(e) { console.error('Combat error:', e); }
 
-      // Health bars
-      for (var si = 0; si < soldiers.length; si++) updateHealthBar(soldiers[si].healthBar, soldiers[si].health / soldiers[si].maxHealth);
-      for (var ei = 0; ei < enemies.length; ei++) updateHealthBar(enemies[ei].healthBar, enemies[ei].health / enemies[ei].maxHealth);
-      if (state.bossActive && state.currentBoss) updateHealthBar(state.currentBoss.healthBar, state.currentBoss.health / state.currentBoss.maxHealth);
+    // Health bars (isolated)
+    try {
+      for (var si = 0; si < soldiers.length; si++) {
+        var s = soldiers[si]; if (!s || !s.healthBar) continue;
+        updateHealthBar(s.healthBar, s.health / s.maxHealth);
+      }
+      for (var ei = 0; ei < enemies.length; ei++) {
+        var e = enemies[ei]; if (!e || !e.healthBar) continue;
+        updateHealthBar(e.healthBar, e.health / e.maxHealth);
+      }
+      if (state.bossActive && state.currentBoss && state.currentBoss.healthBar) {
+        updateHealthBar(state.currentBoss.healthBar, state.currentBoss.health / state.currentBoss.maxHealth);
+      }
+    } catch(e) { console.error('Health bar error:', e); }
 
-      // Research chamber orbs
+    // Research orbs
+    try {
       if (researchChamberGroup && researchChamberGroup.children) {
         var time = performance.now() / 1000;
         for (var oi = 0; oi < researchChamberGroup.children.length; oi++) {
@@ -595,7 +646,10 @@ function startGameLoop() {
           orb.position.x = Math.cos(a) * 0.6; orb.position.z = Math.sin(a) * 0.6; orb.position.y = Math.sin(time * 2 + oi) * 0.15;
         }
       }
+    } catch(e) { console.error('Research orb error:', e); }
 
+    // Lights
+    try {
       cLP = Math.max(0, cLP - dt * 2.5);
       qgLight.intensity = Math.max(2.5, qgLight.intensity - dt * 3);
       qgSphere.material.emissiveIntensity = Math.max(1, qgSphere.material.emissiveIntensity - dt * 3);
@@ -606,28 +660,40 @@ function startGameLoop() {
         if (st.pileMesh) st.pileMesh.rotation.y += dt * 0.3;
         if (st.markerMesh) { st.markerMesh.position.y = GTY + 1.3 + Math.sin(now / 400 + st.x) * 0.08; st.markerMesh.rotation.y += dt; }
       }
+    } catch(e) { console.error('Lights error:', e); }
 
+    // Storage piles
+    try {
       storageUpdateCounter += dt;
       if (storagePilesDirty && storageUpdateCounter > 30) { storageUpdateCounter = 0; storagePilesDirty = false; updateStoragePiles(); }
+    } catch(e) { console.error('Storage piles error:', e); }
 
+    // Achievements, rebalance, tutorials
+    try {
       achCheckAccumulator += dt;
       if (achCheckAccumulator > 8) { achCheckAccumulator = 0; checkAchievements(); }
       workerRebalanceAccumulator += dt;
       if (workerRebalanceAccumulator > BAL.workerRebalanceInterval) { workerRebalanceAccumulator = 0; rebalanceWorkers(); }
       tutorialCheckAccumulator += dt;
       if (tutorialCheckAccumulator > 5) { tutorialCheckAccumulator = 0; checkTutorials(); }
+    } catch(e) { console.error('Achievement/tutorial error:', e); }
 
+    // Camera, HUD, save
+    try {
       if (typeof updateCameraAnim === 'function') updateCameraAnim(dt);
       if (typeof updateCamera === 'function') updateCamera();
       refreshHUD();
+    } catch(e) { console.error('HUD/camera error:', e); }
 
+    try {
       sC += dt;
       if (sC > 10) { sC = 0; state.lastSaveTime = Date.now(); saveGame(); }
-    } catch(e) {
-      console.error('Loop error:', e);
-      if (sC > 5) { sC = 0; showToast("⚠️ Minor hiccup — colony survived!"); }
-    }
-    renderer.render(scene, camera);
+    } catch(e) { console.error('Save error:', e); }
+
+    // Render always runs
+    try {
+      renderer.render(scene, camera);
+    } catch(e) { console.error('Render error:', e); }
   }
   animate();
 }
