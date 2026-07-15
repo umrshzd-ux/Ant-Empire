@@ -3,6 +3,7 @@
 var container, scene, camera, renderer, hLight, sLight, fLight, raycaster;
 var gameLoopActive = false;
 var gameSystemsReady = false;
+var gamePaused = false; // NEW: pause flag for resume
 
 function initThreeJS() {
   container = document.getElementById("canvas-container");
@@ -37,10 +38,13 @@ function initThreeJS() {
 
 // ----- Main menu functions -----
 function showMainMenu() {
-  if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId = null; }
-  gameLoopActive = false;
-  state.lastSaveTime = Date.now();
-  saveGame();
+  // Instead of stopping the loop, just pause it
+  gamePaused = true;
+  if (gameLoopActive) {
+    // Save game state
+    state.lastSaveTime = Date.now();
+    saveGame();
+  }
 
   document.getElementById('main-menu').style.display = 'flex';
   document.getElementById('hud').style.display = 'none';
@@ -75,6 +79,9 @@ function hideMainMenu() {
   if (bossName) bossName.style.display = 'none';
   var bossBar = document.getElementById('boss-health-bar');
   if (bossBar) bossBar.style.display = 'none';
+
+  // Unpause the game
+  gamePaused = false;
 }
 
 // ----- Save slot rendering (direct event listeners) -----
@@ -111,12 +118,20 @@ function renderSlots() {
     var slotDiv = saveSlotDivs[j];
     var slotIndex = parseInt(slotDiv.getAttribute('data-slot'));
 
-    // Click on the whole card (load colony)
+    // Click on the whole card (load/resume colony)
     slotDiv.addEventListener('click', function(slot) {
       return function(e) {
-        // If the click came from a button inside the card, ignore
-        if (e.target.closest('button')) return;
-        loadSlot(slot);
+        // If the click came from the delete or rename button, ignore
+        if (e.target.closest('.delete-colony-btn') || e.target.closest('.rename-colony-btn')) {
+          return;
+        }
+        // Resume same colony if already active, otherwise load it
+        if (slot === currentSlot && gameSystemsReady && gamePaused) {
+          // Resume without rebuilding
+          hideMainMenu();
+        } else {
+          loadSlot(slot);
+        }
       };
     }(slotIndex));
 
@@ -180,6 +195,7 @@ function performDelete(slot) {
   SaveManager.deleteSlot(slot);
   if (currentSlot === slot) {
     currentSlot = -1;
+    gamePaused = false; // ensure paused flag cleared
     showMainMenu();
   } else {
     renderSlots();
@@ -187,9 +203,21 @@ function performDelete(slot) {
 }
 
 window.loadSlot = function(slot) {
+  // If the same colony is already active and we're just resuming, do nothing extra
+  if (slot === currentSlot && gameSystemsReady && gamePaused) {
+    hideMainMenu();
+    return;
+  }
+
+  // For a different colony, stop the current loop and rebuild
+  if (gameLoopActive) {
+    if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId = null; }
+    gameLoopActive = false;
+    gamePaused = false;
+  }
+
   var data = SaveManager.loadGame(slot);
   clearAllMeshes();
-  // Save the loaded timestamp BEFORE startGameLoop overwrites it
   var loadedSaveTime = data ? data.lastSaveTime : Date.now();
   if (data) {
     currentSlot = slot;
@@ -201,15 +229,12 @@ window.loadSlot = function(slot) {
   hideMainMenu();
   initGameSystems();
   startGameLoop();
-  // Restore the original save time so offline progress calculates correctly
   state.lastSaveTime = loadedSaveTime;
-  // Ensure bossTimer has a valid value (safety net)
   if (!state.bossTimer || state.bossTimer <= 0) {
     state.bossTimer = BAL.bossIntervalMin + Math.random() * (BAL.bossIntervalMax - BAL.bossIntervalMin);
   }
   AudioManager.sfx.buttonClick();
   updateBossTimer();
-  // Force hide boss UI
   var bossName = document.getElementById('boss-name');
   if (bossName) bossName.style.display = 'none';
   var bossBar = document.getElementById('boss-health-bar');
@@ -343,16 +368,16 @@ function buyAscensionUpgrade(id) {
   saveGame();
 }
 
-// ----- Main loop (with render outside try, performance safe) -----
+// ----- Main loop (with pause support, render outside try) -----
 var eLC = 0, sC = 0, cLP = 0, storageUpdateCounter = 0, achCheckAccumulator = 0, workerRebalanceAccumulator = 0, tutorialCheckAccumulator = 0, animFrameId = null;
-var vwFoodAccum = 0; // accumulator for virtual worker food
+var vwFoodAccum = 0;
 
 function startGameLoop() {
   gameLoopActive = true;
+  gamePaused = false;
   state.lastTime = performance.now();
   state.lastSaveTime = Date.now();
 
-  // Force hide boss UI at loop start
   var bossName = document.getElementById('boss-name');
   if (bossName) bossName.style.display = 'none';
   var bossBar = document.getElementById('boss-health-bar');
@@ -363,6 +388,12 @@ function startGameLoop() {
   function animate() {
     if (!gameLoopActive) { animFrameId = null; return; }
     animFrameId = requestAnimationFrame(animate);
+
+    // If paused, skip all updates and rendering
+    if (gamePaused) {
+      return; // still requests next frame, so loop keeps running at idle cost
+    }
+
     try {
       var now = performance.now();
       var dt = (now - state.lastTime) / 1000; dt = Math.min(dt, 0.1);
@@ -423,7 +454,6 @@ function startGameLoop() {
         state.bossTimer -= dt;
         if (state.bossTimer <= 0) {
           spawnBoss();
-          // Reset timer regardless of success to prevent continuous attempts
           state.bossTimer = BAL.bossIntervalMin + Math.random() * (BAL.bossIntervalMax - BAL.bossIntervalMin);
           updateSummonButton();
         }
@@ -621,7 +651,6 @@ function initGameSystems() {
   refreshAchievementsUI(); refreshPrestigeShopUI(); refreshEvolutionUI(); refreshHUD(); refreshDailyUI(); refreshStatsUI(); refreshRoadmapUI();
   gameSystemsReady = true;
 
-  // Final hide of boss UI
   var bossName = document.getElementById('boss-name');
   if (bossName) bossName.style.display = 'none';
   var bossBar = document.getElementById('boss-health-bar');
