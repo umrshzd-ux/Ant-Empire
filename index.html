@@ -681,10 +681,10 @@ canvas { display: block; }
   <div class="menu-title">🐜 Ant Empire</div>
   <div class="menu-subtitle">Build · Evolve · Conquer</div>
   <div id="save-slots"></div>
-  <button class="menu-btn" id="btn-stats-menu">📊 Stats</button>
-  <button class="menu-btn" id="btn-roadmap-menu">🗺️ Roadmap</button>
-  <button class="menu-btn" id="btn-howtoplay-menu">📖 How to Play</button>
-  <button class="menu-btn" id="btn-settings-menu">⚙️ Settings</button>
+  <button class="menu-btn" onclick="openStats()">📊 Stats</button>
+  <button class="menu-btn" onclick="openRoadmap()">🗺️ Roadmap</button>
+  <button class="menu-btn" onclick="openHowToPlay()">📖 How to Play</button>
+  <button class="menu-btn" onclick="openSettings()">⚙️ Settings</button>
 </div>
 
 <!-- HOW TO PLAY (merged with About) -->
@@ -703,7 +703,7 @@ canvas { display: block; }
     <hr style="border-color:rgba(255,255,255,0.1); margin: 10px 0;">
     <p style="color:#aaa;">🐜 Ant Empire: Idle Colony<br>Version 20<br>Made with ❤️ and Three.js</p>
   </div>
-  <button class="menu-btn" id="btn-close-howtoplay">Close</button>
+  <button class="menu-btn" onclick="document.getElementById('howtoplay-panel').style.display='none'">Close</button>
 </div>
 
 <!-- SETTINGS -->
@@ -713,20 +713,20 @@ canvas { display: block; }
   <div class="setting-row"><span>🎵 Ambient Music</span><div class="toggle-switch on" id="toggle-ambient"></div></div>
   <div class="setting-row"><span>🎶 Background Music</span><div class="toggle-switch on" id="toggle-music"></div></div>
   <div class="setting-row"><span>📳 Screen Shake</span><div class="toggle-switch on" id="toggle-shake"></div></div>
-  <button class="menu-btn" id="btn-close-settings">Close</button>
+  <button class="menu-btn" onclick="document.getElementById('settings-panel').style.display='none'">Close</button>
 </div>
 
 <!-- STATS -->
-<div id="stats-panel" class="overlay-panel"><div class="panel-title">📊 Lifetime Stats</div><div id="stats-content"></div><button class="menu-btn" id="btn-close-stats">Close</button></div>
+<div id="stats-panel" class="overlay-panel"><div class="panel-title">📊 Lifetime Stats</div><div id="stats-content"></div><button class="menu-btn" onclick="document.getElementById('stats-panel').style.display='none'">Close</button></div>
 
 <!-- DAILY -->
-<div id="daily-panel" class="overlay-panel"><div class="panel-title">📋 Daily Challenges</div><div id="daily-content"></div><button class="menu-btn" id="btn-close-daily">Close</button></div>
+<div id="daily-panel" class="overlay-panel"><div class="panel-title">📋 Daily Challenges</div><div id="daily-content"></div><button class="menu-btn" onclick="document.getElementById('daily-panel').style.display='none'">Close</button></div>
 
 <!-- ROADMAP -->
-<div id="roadmap-panel" class="overlay-panel"><div class="panel-title">🗺️ Prestige Roadmap</div><div id="roadmap-content"></div><button class="menu-btn" id="btn-close-roadmap">Close</button></div>
+<div id="roadmap-panel" class="overlay-panel"><div class="panel-title">🗺️ Prestige Roadmap</div><div id="roadmap-content"></div><button class="menu-btn" onclick="document.getElementById('roadmap-panel').style.display='none'">Close</button></div>
 
 <!-- ASCENSION -->
-<div id="ascension-panel" class="overlay-panel"><div class="panel-title">⬆️ Ascension</div><div id="ascension-content"></div><button class="menu-btn" id="btn-close-ascension">Close</button></div>
+<div id="ascension-panel" class="overlay-panel"><div class="panel-title">⬆️ Ascension</div><div id="ascension-content"></div><button class="menu-btn" onclick="document.getElementById('ascension-panel').style.display='none'">Close</button></div>
 
 <!-- ========== DECLUTTERED HUD ========== -->
 <div id="hud" style="display:none">
@@ -922,6 +922,22 @@ canvas { display: block; }
 </script>
 
 <script>
+  // Global functions for main menu buttons
+  window.openStats = function() {
+    document.getElementById('stats-panel').style.display = 'flex';
+    if (typeof refreshStatsUI === 'function') refreshStatsUI();
+  };
+  window.openRoadmap = function() {
+    document.getElementById('roadmap-panel').style.display = 'flex';
+    if (typeof refreshRoadmapUI === 'function') refreshRoadmapUI();
+  };
+  window.openHowToPlay = function() {
+    document.getElementById('howtoplay-panel').style.display = 'flex';
+  };
+  window.openSettings = function() {
+    document.getElementById('settings-panel').style.display = 'flex';
+  };
+
   window.onerror = function(msg, url, line) {
     var ld = document.getElementById('loading');
     if (ld) {
@@ -968,4 +984,4 @@ canvas { display: block; }
   })();
 </script>
 </body>
-       </html>
+                                                                                     </html>
