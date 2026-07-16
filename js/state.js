@@ -60,7 +60,7 @@ var state = {
   eggLayTime: 10, hatchTime: 10,
   workerCount: 4, soldierCount: 0, scoutCount: 0, lastTime: 0, lastSaveTime: 0,
   chambers: { foodStorage: { count: 0, bonusCap: 0 }, nursery: { count: 0, hatchReduction: 0 },
-              soldier: { count: 0 }, research: { count: 0 }, scout: { count: 0 } },
+              soldier: { count: 0 }, research: { count: 0 }, scout: { count: 0 }, royal: { count: 0 } },
   deadSoldiers: 0, soldierRespawnTimer: 0,
   upgrades: { soldierDamage: 0, workerSpeed: 0, eggLayTime: 0, foodCap: 0 },
   gemUpgrades: {},
@@ -98,7 +98,30 @@ var state = {
   prestigeGoal: null,
   prestigeGoalSelected: false,
   eventChoices: [],
-  eventChoiceActive: false
+  eventChoiceActive: false,
+
+  // New systems
+  researchBonuses: {
+    foodPerTrip: 0,
+    soldierHealth: 0,
+    soldierDamage: 0,
+    discoveryChance: 0,
+    zoneTripReduction: 0,
+    eggLayReduction: 0,
+    scoutSpeed: 0,
+    poisonResist: false,
+    queensWrathUnlocked: false,
+    pheromoneShieldUnlocked: false
+  },
+  completedResearch: [],
+  queensWrathActive: false,
+  queensWrathTimer: 0,
+  queenProtected: false,
+  _royalGroups: [],
+  bossFightTimer: 0,
+  _bossMilestonesHit: {},
+  _bossRetreatTimer: 0,
+  _lastBossStealTime: 0
 };
 var queenScale = BAL.queenBaseScale;
 state.lastTime = performance.now();
@@ -113,17 +136,17 @@ state.xpToNext = Math.floor(40 * Math.pow(1.15, state.level - 1));
 
 // Reset state to fresh default (used when starting a new colony)
 function resetStateToDefault(slot) {
-  var prevGemUpgrades = state.gemUpgrades;  // preserve permanent gem purchases
+  var prevGemUpgrades = state.gemUpgrades;
   state.colonyName = "Colony " + (slot + 1);
   state.food = BAL.baseFoodCap; state.gems = 0; state.foodCap = BAL.baseFoodCap;
   state.level = 1; state.xp = 0; state.xpToNext = Math.floor(40 * Math.pow(1.15, 0));
   state.eggs = 0; state.workerCount = 4; state.soldierCount = 0; state.scoutCount = 0;
   state.lastTime = performance.now(); state.lastSaveTime = Date.now();
   state.chambers = { foodStorage: { count: 0, bonusCap: 0 }, nursery: { count: 0, hatchReduction: 0 },
-                     soldier: { count: 0 }, research: { count: 0 }, scout: { count: 0 } };
+                     soldier: { count: 0 }, research: { count: 0 }, scout: { count: 0 }, royal: { count: 0 } };
   state.deadSoldiers = 0; state.soldierRespawnTimer = 0;
   state.upgrades = { soldierDamage: 0, workerSpeed: 0, eggLayTime: 0, foodCap: 0 };
-  state.gemUpgrades = prevGemUpgrades; // keep permanent purchases
+  state.gemUpgrades = prevGemUpgrades;
   state.expansionTrips = 0; state.unlockedZones = 0;
   state.rallyActive = false; state.rallyTimer = 0; state.rallyCooldown = 0;
   state.waveActive = false; state.waveTimer = 35; state.waveSpidersRemaining = 0;
@@ -155,16 +178,23 @@ function resetStateToDefault(slot) {
   state.caveBossKills = 0; state.swampBossKills = 0; state.mountainBossKills = 0;
   state.hasAscended = false;
   queenScale = BAL.queenBaseScale;
-  // Safety: ensure bossTimer is valid
-  if (!state.bossTimer || state.bossTimer <= 0) {
-    state.bossTimer = BAL.bossIntervalMin + Math.random() * (BAL.bossIntervalMax - BAL.bossIntervalMin);
-  }
+  if (!state.bossTimer || state.bossTimer <= 0) { state.bossTimer = BAL.bossIntervalMin + Math.random() * (BAL.bossIntervalMax - BAL.bossIntervalMin); }
   // Engagement reset
   state.buildQueue = [];
   state.prestigeGoal = null;
   state.prestigeGoalSelected = false;
   state.eventChoices = [];
   state.eventChoiceActive = false;
+  // New systems reset
+  state.researchBonuses = { foodPerTrip: 0, soldierHealth: 0, soldierDamage: 0, discoveryChance: 0, zoneTripReduction: 0, eggLayReduction: 0, scoutSpeed: 0, poisonResist: false, queensWrathUnlocked: false, pheromoneShieldUnlocked: false };
+  state.completedResearch = [];
+  state.queensWrathActive = false; state.queensWrathTimer = 0;
+  state.queenProtected = false;
+  state._royalGroups = [];
+  state.bossFightTimer = 0;
+  state._bossMilestonesHit = {};
+  state._bossRetreatTimer = 0;
+  state._lastBossStealTime = 0;
   recalculateHatchTime();
   updateEggLayTime();
   recalculateFoodCap();
@@ -196,20 +226,15 @@ function recalculateHatchTime() {
   if (state.evolution.worker >= 3) base -= EVOLUTION_TREE.worker.tiers[2].effect.hatchReduction;
   base -= state.chambers.nursery.hatchReduction;
   if (state.ascensionUpgrades.eternalHatch > 0) base = 0;
-  // Food high hatch boost
-  if (state.food / state.foodCap > BAL.foodHighThreshold) {
-    base *= (1 - BAL.foodTensionHatchBoost);
-  }
+  if (state.food / state.foodCap > BAL.foodHighThreshold) { base *= (1 - BAL.foodTensionHatchBoost); }
   state.hatchTime = Math.max(0, base);
 }
 function updateEggLayTime() {
   var extra = Math.max(0, state.workerCount - 4);
   var blessing = state.gemUpgrades.queenBless ? 5 : 0;
   var baseTime = state.earlyGameBoost > 0 ? BAL.baseEggLayTime * BAL.earlyGameEggMultiplier : BAL.baseEggLayTime;
-  // Food high hatch boost (lay eggs faster)
-  if (state.food / state.foodCap > BAL.foodHighThreshold) {
-    baseTime *= (1 - BAL.foodTensionHatchBoost);
-  }
+  if (state.researchBonuses.eggLayReduction > 0) baseTime *= (1 - state.researchBonuses.eggLayReduction);
+  if (state.food / state.foodCap > BAL.foodHighThreshold) { baseTime *= (1 - BAL.foodTensionHatchBoost); }
   state.eggLayTime = Math.max(2, baseTime + extra * BAL.eggLayTimePerWorker - state.upgrades.eggLayTime * UPGRADES.eggLayTime.effect - blessing);
 }
 function recalculateFoodCap() {
@@ -231,6 +256,7 @@ function getEffectiveFoodPerTrip() {
   var base = BAL.foodPerTrip + (state.prestigeUpgrades.ppFood || 0) + (state.prestigeFoodBonus || 0);
   if (state.gemUpgrades.goldenSkin) base += 1;
   if (state.evolution.worker >= 1) base += EVOLUTION_TREE.worker.tiers[0].effect.foodBonus;
+  if (state.researchBonuses.foodPerTrip > 0) base += state.researchBonuses.foodPerTrip;
   var mult = Math.pow(BAL.ascensionMultiplierFood, state.ascensionCount);
   return base * mult;
 }
@@ -239,11 +265,8 @@ function getEffectiveWorkerSpeed() {
   if (state.prestigeUpgrades.ppSpeed) base *= 1 + state.prestigeUpgrades.ppSpeed * 0.1;
   if (state.speedBoostTimer > 0) base *= 2;
   if (state.ascensionUpgrades.goldenQueen > 0) base *= 2;
-  // Food tension slowdown
   var foodRatio = state.food / Math.max(1, state.foodCap);
-  if (foodRatio < BAL.foodLowThreshold) {
-    base *= (BAL.foodTensionMaxSlowdown + (1 - BAL.foodTensionMaxSlowdown) * (foodRatio / BAL.foodLowThreshold));
-  }
+  if (foodRatio < BAL.foodLowThreshold) { base *= (BAL.foodTensionMaxSlowdown + (1 - BAL.foodTensionMaxSlowdown) * (foodRatio / BAL.foodLowThreshold)); }
   return base;
 }
 function getEffectiveScoutSpeed() {
@@ -251,12 +274,14 @@ function getEffectiveScoutSpeed() {
   if (state.evolution.scout >= 1) base += EVOLUTION_TREE.scout.tiers[0].effect.speedBonus;
   if (state.prestigeUpgrades.ppSpeed) base *= 1 + state.prestigeUpgrades.ppSpeed * 0.1;
   if (state.ascensionUpgrades.goldenQueen > 0) base *= 2;
+  if (state.researchBonuses.scoutSpeed > 0) base += state.researchBonuses.scoutSpeed;
   return base;
 }
 function getEffectiveSoldierDamage() {
   var base = BAL.soldierDamage + state.upgrades.soldierDamage * UPGRADES.soldierDamage.effect;
   if (state.gemUpgrades.antStrength) base += 4;
   if (state.evolution.soldier >= 2) base += EVOLUTION_TREE.soldier.tiers[1].effect.damageBonus;
+  if (state.researchBonuses.soldierDamage > 0) base += state.researchBonuses.soldierDamage;
   var mult = Math.pow(BAL.ascensionMultiplierDamage, state.ascensionCount);
   return base * mult;
 }
@@ -264,6 +289,7 @@ function getEffectiveSoldierMaxHealth() {
   var base = BAL.soldierHealth;
   if (state.gemUpgrades.soldierArmor) base += 30;
   if (state.evolution.soldier >= 1) base += EVOLUTION_TREE.soldier.tiers[0].effect.healthBonus;
+  if (state.researchBonuses.soldierHealth > 0) base += state.researchBonuses.soldierHealth;
   return base;
 }
 function getEffectiveGuardRadius() {
@@ -316,6 +342,7 @@ function loadGameData(data) {
   var nk = ["food","gems","foodCap","level","xp","xpToNext","eggs","workerCount","soldierCount","scoutCount","deadSoldiers","expansionTrips","unlockedZones","rareAntCount","nestEvolutionLevel","totalHatched","totalKills","totalGemsEarned","dailyStreak","earlyGameBoost","survivedNight","rallyUses","surgesCollected","virtualWorkers","bossKills","bossTimer","beetleKills","waspKills","prestigeCount","prestigePoints","colonyName","queenClicks","prestigeStartTime","prestigeStartLevel","prestigeFoodBonus"];
   for (var i = 0; i < nk.length; i++) { var k = nk[i]; if (data[k] !== undefined) state[k] = data[k]; }
   if (data.chambers) state.chambers = data.chambers;
+  if (!state.chambers.royal) state.chambers.royal = { count: 0 };
   if (data.upgrades) state.upgrades = data.upgrades;
   if (data.gemUpgrades) state.gemUpgrades = data.gemUpgrades;
   if (data.achievementsClaimed) {
@@ -343,9 +370,7 @@ function loadGameData(data) {
   if (data.currentZone) state.currentZone = data.currentZone;
   if (data.unlockedZonesList) state.unlockedZonesList = data.unlockedZonesList;
   if (data.bossTimer !== undefined) state.bossTimer = data.bossTimer;
-  if (!state.bossTimer || state.bossTimer <= 0) {
-    state.bossTimer = BAL.bossIntervalMin + Math.random() * (BAL.bossIntervalMax - BAL.bossIntervalMin);
-  }
+  if (!state.bossTimer || state.bossTimer <= 0) { state.bossTimer = BAL.bossIntervalMin + Math.random() * (BAL.bossIntervalMax - BAL.bossIntervalMin); }
   if (data.tutorialsShown) state.tutorialsShown = data.tutorialsShown;
   if (data.lifetimeStats) state.lifetimeStats = data.lifetimeStats;
   if (data.dailyChallengeDate) state.dailyChallengeDate = data.dailyChallengeDate;
@@ -369,6 +394,17 @@ function loadGameData(data) {
   state.prestigeGoalSelected = data.prestigeGoalSelected || false;
   state.eventChoices = [];
   state.eventChoiceActive = false;
+  // New systems
+  if (data.researchBonuses) state.researchBonuses = data.researchBonuses;
+  if (data.completedResearch) state.completedResearch = data.completedResearch;
+  state.queensWrathActive = data.queensWrathActive || false;
+  state.queensWrathTimer = data.queensWrathTimer || 0;
+  state.queenProtected = false;
+  state._royalGroups = [];
+  state.bossFightTimer = 0;
+  state._bossMilestonesHit = {};
+  state._bossRetreatTimer = 0;
+  state._lastBossStealTime = 0;
   state.xpToNext = Math.floor(40 * Math.pow(1.15, state.level - 1));
   recalculateHatchTime();
   updateEggLayTime();
@@ -394,4 +430,4 @@ function addGems(amount) {
   state.totalGemsEarned += amount;
   state.lifetimeStats.totalGems = (state.lifetimeStats.totalGems || 0) + amount;
   showToast("+" + amount + "💎");
-    }
+             }
