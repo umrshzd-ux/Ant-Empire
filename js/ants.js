@@ -101,7 +101,7 @@ function updateWorker(w, dt) {
   var step = Math.min(w.speed * dt, dist); p.x += (dx / dist) * step; p.y += (dy / dist) * step; p.z += (dz / dist) * step; w.mesh.rotation.y = Math.atan2(dx, dz); w.mesh.position.y += Math.sin(performance.now() / 90 + p.x * 5) * 0.008;
   if (w.carrying && !w.foodIcon) { var ic = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 6), new THREE.MeshStandardMaterial({ color: 0xffd27a, emissive: 0x553300, emissiveIntensity: 0.3 })); ic.position.set(0, 0.55, 0); w.mesh.add(ic); w.foodIcon = ic; }
   else if (!w.carrying && w.foodIcon && w.dropAnimTimer === undefined) { disposeMesh(w.foodIcon); w.mesh.remove(w.foodIcon); w.foodIcon = null; }
-}
+    }
 function updateEggCarrier(w, dt) {
   if (!w.carryingEgg || !w.mesh) return;
   var raw = w.path[w.pathIndex]; if (!raw) { w.carryingEgg = false; w.state = "TO_FOOD"; setPathTarget(w, "FOOD"); if (w.eggIcon) { disposeMesh(w.eggIcon); w.mesh.remove(w.eggIcon); w.eggIcon = null; } return; }
