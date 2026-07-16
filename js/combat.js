@@ -132,9 +132,6 @@ function spawnBoss() {
       bossMesh.position.set(sx, GTY + 0.5, sz);
       scene.add(bossMesh);
 
-      // Boss always starts at a safe distance from nest
-      var safeTarget = new THREE.Vector3(ER.x + 5, ER.y, ER.z);
-
       var hb = typeof createHealthBar === 'function' ? createHealthBar(bossMesh, 120, 12, 1.8) : null;
       var hbFill = document.getElementById('boss-health-fill');
       if (hbFill) {
@@ -147,7 +144,7 @@ function spawnBoss() {
         maxHealth: bossHealth,
         healthBar: hb,
         speed: BAL[bt.spdKey],
-        target: safeTarget,
+        target: ER.clone(),  // always target nest entrance
         attackCooldown: 0,
         lastAttack: 0,
         bossKey: bossKey,
@@ -186,40 +183,30 @@ function updateBoss(dt) {
   var hbFill = document.getElementById('boss-health-fill');
   if (hbFill) hbFill.style.width = Math.max(0, (boss.health / boss.maxHealth) * 100) + "%";
 
-  // Boss movement and behavior
+  // If no soldiers, boss may retreat after stealing
   if (soldiers.length === 0) {
-    // No soldiers: boss stays at a safe distance and will retreat after a short time
-    var safePoint = new THREE.Vector3(ER.x + 5, ER.y, ER.z);
-    boss.target.copy(safePoint);
-
-    // Steal food if close enough
     var dtn = boss.mesh.position.distanceTo(ER);
-    if (dtn < 4.0) {
+    if (dtn < 1.5) {
       state._bossRetreatTimer = (state._bossRetreatTimer || 0) + dt;
       if (!state._lastBossStealTime) state._lastBossStealTime = 0;
       state._lastBossStealTime += dt;
       if (state._lastBossStealTime >= 2) {
         state._lastBossStealTime = 0;
-        var stolen = Math.min(state.food, 10 + Math.floor(Math.random() * 15));
+        var stolen = Math.min(state.food, 15 + Math.floor(Math.random() * 20));
         if (stolen > 0) {
           state.food = Math.max(0, state.food - stolen);
           showToast("💀 Boss stole " + stolen + " food!");
           spawnFloater("-" + stolen + " 🌾", window.innerWidth / 2, window.innerHeight / 2, "#ff6666");
         }
       }
-      // Retreat after 20 seconds
-      if (state._bossRetreatTimer > 20) {
+      if (state._bossRetreatTimer > 30) {
         killBoss();
         showToast("💀 Boss left the colony!");
         return;
       }
     } else {
-      state._bossRetreatTimer = Math.max(0, (state._bossRetreatTimer || 0) - dt * 0.5);
+      state._bossRetreatTimer = Math.max(0, (state._bossRetreatTimer || 0) - dt);
     }
-  } else {
-    // Soldiers exist: boss targets the nest to fight
-    boss.target.copy(ER);
-    state._bossRetreatTimer = 0;
   }
 
   var p = boss.mesh.position;
@@ -232,12 +219,9 @@ function updateBoss(dt) {
     p.z += (dz / dist) * step;
     boss.mesh.rotation.y = Math.atan2(dx, dz);
   }
-
   var now = performance.now() / 1000;
   if (boss.attackCooldown > 0) boss.attackCooldown -= dt;
-
-  // Boss only attacks if soldiers exist and are nearby
-  if (soldiers.length > 0 && boss.attackCooldown <= 0) {
+  if (boss.attackCooldown <= 0 && dist < 2.5 && soldiers.length > 0) {
     for (var i = 0; i < soldiers.length; i++) {
       if (soldiers[i].mesh.position.distanceTo(p) < 2.5) {
         var dmg = BAL[bt.dmgKey];
@@ -258,8 +242,6 @@ function updateBoss(dt) {
       }
     }
   }
-
-  // Soldiers attack boss
   for (var i = 0; i < soldiers.length; i++) {
     var s = soldiers[i];
     if (s.freezeTimer && s.freezeTimer > 0) { s.freezeTimer -= dt; continue; }
@@ -275,7 +257,6 @@ function updateBoss(dt) {
       if (boss.health <= 0) killBoss();
     }
   }
-
   if (boss.special === "regen" && boss.health < boss.maxHealth) {
     boss.health += boss.maxHealth * 0.05 * dt;
     if (boss.health > boss.maxHealth) boss.health = boss.maxHealth;
@@ -320,13 +301,4 @@ function killBoss() {
   showToast("💀 " + BOSS_TYPES[bossKey].name + " defeated! +" + foodReward + " food, +" + gemReward + " gems");
   checkAchievements();
   triggerShake(2, 0.3);
-}
-
-function summonBoss() {
-  if (state.bossActive) { showToast("Boss already active!"); return; }
-  if (state.gems < BAL.summonCost) { showToast("Need " + BAL.summonCost + " 💎!"); return; }
-  state.gems -= BAL.summonCost;
-  if (summonBtn) summonBtn.disabled = true;
-  spawnBoss();
-  showToast("💀 Boss summoned!");
-        }
+                        }
