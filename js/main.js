@@ -4,7 +4,7 @@ var container, scene, camera, renderer, hLight, sLight, fLight, raycaster;
 var gameLoopActive = false;
 var gameSystemsReady = false;
 var gamePaused = false;
-var _lastRainUpdate = 0;  // module-scoped rain throttle
+var _lastRainUpdate = 0;
 
 function initThreeJS() {
   container = document.getElementById("canvas-container");
@@ -337,7 +337,7 @@ function buyAscensionUpgrade(id) {
   saveGame();
 }
 
-// ----- Main loop (with isolated error handling) -----
+// ----- Main loop (with label visibility control) -----
 var eLC = 0, sC = 0, cLP = 0, storageUpdateCounter = 0, achCheckAccumulator = 0, workerRebalanceAccumulator = 0, tutorialCheckAccumulator = 0, animFrameId = null;
 var vwFoodAccum = 0;
 
@@ -437,7 +437,6 @@ function startGameLoop() {
       if (!state.eventActive && !state.eventChoiceActive) {
         state.eventTimer -= dt;
         if (state.eventTimer <= 0) {
-          // Check reactive events
           var reactiveAvailable = [];
           for (var i = 0; i < REACTIVE_EVENTS.length; i++) {
             if (REACTIVE_EVENTS[i].condition()) reactiveAvailable.push(REACTIVE_EVENTS[i]);
@@ -447,15 +446,13 @@ function startGameLoop() {
             state.eventChoices = rev.choices;
             state.eventChoiceActive = true;
             state.eventActive = true;
-            state.eventTimer = BAL.eventIntervalMin + Math.random() * (BAL.eventIntervalMax - BAL.eventIntervalMin); // safety reset
+            state.eventTimer = BAL.eventIntervalMin + Math.random() * (BAL.eventIntervalMax - BAL.eventIntervalMin);
             showReactiveEventUI(rev);
           } else {
-            // Fallback classic event
             triggerRandomEvent();
           }
         }
       } else if (state.eventActive && !state.eventChoiceActive) {
-        // Classic event timeout
         state.eventTimer -= dt;
         if (state.eventTimer <= -15) {
           state.eventActive = false;
@@ -542,7 +539,6 @@ function startGameLoop() {
           p.x += (dx / dist) * step; p.z += (dz / dist) * step;
           sp.mesh.rotation.y = Math.atan2(dx, dz);
         } else if (sp.stealing && !sp.fleeTarget) {
-          // stuck stealing spider – remove after 5 seconds
           sp._stuckTimer = (sp._stuckTimer || 0) + dt;
           if (sp._stuckTimer > 5) {
             disposeMesh(sp.mesh); scene.remove(sp.mesh); enemies.splice(i, 1);
@@ -635,6 +631,18 @@ function startGameLoop() {
         updateHealthBar(state.currentBoss.healthBar, state.currentBoss.health / state.currentBoss.maxHealth);
       }
     } catch(e) { console.error('Health bar error:', e); }
+
+    // Label visibility: only show labels when camera is underground (looking at tunnel)
+    try {
+      var cameraY = camera.position.y;
+      var isUnderground = cameraY < CCY + 1.0; // below surface level
+      // Toggle all sprites that are labels
+      scene.traverse(function(obj) {
+        if (obj.isSprite && obj.userData && obj.userData.isLabel) {
+          obj.visible = isUnderground;
+        }
+      });
+    } catch(e) { console.error('Label visibility error:', e); }
 
     // Research orbs
     try {
