@@ -4,7 +4,7 @@ var elFood, elFoodCap, elGems, elAnts, elAlertCount;
 var elAlertsPanel, elAlertsContent, elResourcesPanel;
 var elMorePanel;
 var toastEl, floatersEl;
-var buildPanel, upgradePanel, shopPanel, achPanel, evoPanel, ppPanel, ascPanel;
+var buildPanel, upgradePanel, shopPanel, achPanel, evoPanel, ppPanel, ascPanel, researchPanel;
 var surgeBtn, eventBtn, summonBtn, rallyBtn, rallyOverlay;
 
 function initDOMRefs() {
@@ -28,6 +28,7 @@ function initDOMRefs() {
   evoPanel = document.getElementById("evolution-panel");
   ppPanel = document.getElementById("prestige-shop-panel");
   ascPanel = document.getElementById("ascension-shop-panel");
+  researchPanel = document.getElementById("research-panel");
 
   surgeBtn = document.getElementById("surge-btn");
   eventBtn = document.getElementById("event-btn");
@@ -37,7 +38,7 @@ function initDOMRefs() {
 }
 initDOMRefs();
 
-// Rally button listener (safe)
+// Rally button listener
 if (rallyBtn) rallyBtn.addEventListener("click", activateRally);
 
 // ---- Attach summon, surge, event listeners ----
@@ -87,22 +88,9 @@ if (eventBtn) {
 if (summonBtn) {
   summonBtn.addEventListener("click", function() {
     try {
-      if (typeof spawnBoss !== 'function') {
-        showToast("❌ Boss system not ready. Please wait or reload.");
-        return;
-      }
-      if (state.bossActive) { showToast("Boss already active!"); return; }
-      if (state.gems < BAL.summonCost) { showToast("Need " + BAL.summonCost + " 💎!"); return; }
-      state.gems -= BAL.summonCost;
-      summonBtn.disabled = true;
-      spawnBoss();
-      showToast("💀 Boss summoned!");
-      refreshHUD();
+      if (typeof summonBoss === 'function') summonBoss();
     } catch (e) {
       console.error("Summon error:", e);
-      state.gems += BAL.summonCost;
-      showToast("❌ Could not summon boss. Try again.");
-      refreshHUD();
     }
   });
 }
@@ -117,7 +105,7 @@ document.addEventListener('click', function(e) {
   }
 });
 
-// ---- Close buttons inside panels (safe) ----
+// ---- Close buttons inside panels ----
 var alertsCloseBtn = document.getElementById('alerts-close-btn');
 if (alertsCloseBtn) alertsCloseBtn.onclick = function() { if (elAlertsPanel) elAlertsPanel.style.display = 'none'; };
 var resourcesCloseBtn = document.getElementById('resources-close-btn');
@@ -129,7 +117,7 @@ function closeAllModals() {
   });
 }
 
-// Toasts
+// ---- TOAST SYSTEM ----
 var toastQueue = [], toastActive = false;
 function processToastQueue() {
   if (!toastEl) return;
@@ -203,7 +191,6 @@ function updateWaveTimer() { updateAlertsPanel(); }
 function updateEventTimer() { updateAlertsPanel(); }
 function updateBossTimer() { updateAlertsPanel(); }
 
-// Toggle alerts dropdown
 var alertsPill = document.getElementById("alerts-pill");
 if (alertsPill) alertsPill.onclick = function() {
   AudioManager.sfx.buttonClick();
@@ -214,7 +201,7 @@ if (alertsPill) alertsPill.onclick = function() {
 };
 
 // =============================================
-//  RESOURCES POPUP (eggs, VW, fire, PP, AP, level)
+//  RESOURCES POPUP
 // =============================================
 function updateResourcesPopup() {
   var resEggs = document.getElementById("res-eggs");
@@ -241,7 +228,7 @@ if (resourcesPill) resourcesPill.onclick = function() {
 };
 
 // =============================================
-//  HUD UPDATE – simplified, with null checks
+//  HUD UPDATE
 // =============================================
 function refreshHUD() {
   if (elFood) elFood.textContent = Math.floor(state.food);
@@ -260,18 +247,12 @@ function refreshHUD() {
 // =============================================
 function toggleMorePanel() {
   if (!elMorePanel) return;
-  if (elMorePanel.style.display === 'flex') {
-    elMorePanel.style.display = 'none';
-  } else {
-    elMorePanel.style.display = 'flex';
-  }
+  if (elMorePanel.style.display === 'flex') { elMorePanel.style.display = 'none'; }
+  else { elMorePanel.style.display = 'flex'; }
 }
 
 var btnMore = document.getElementById("btn-more");
-if (btnMore) btnMore.onclick = function() {
-  AudioManager.sfx.buttonClick();
-  toggleMorePanel();
-};
+if (btnMore) btnMore.onclick = function() { AudioManager.sfx.buttonClick(); toggleMorePanel(); };
 
 // =============================================
 //  REACTIVE EVENT UI
@@ -300,12 +281,8 @@ function showReactiveEventUI(ev) {
 }
 
 window.selectReactiveChoice = function(idx) {
-  if (state.eventChoices[idx]) {
-    state.eventChoices[idx].action();
-  }
-  state.eventChoiceActive = false;
-  state.eventChoices = [];
-  state.eventActive = false;
+  if (state.eventChoices[idx]) { state.eventChoices[idx].action(); }
+  state.eventChoiceActive = false; state.eventChoices = []; state.eventActive = false;
   state.eventTimer = BAL.eventIntervalMin + Math.random() * (BAL.eventIntervalMax - BAL.eventIntervalMin);
   var container = document.getElementById('reactive-event-panel');
   if (container) container.style.display = 'none';
@@ -314,9 +291,7 @@ window.selectReactiveChoice = function(idx) {
 
 function updateReactiveEventUI() {
   var container = document.getElementById('reactive-event-panel');
-  if (container && !state.eventChoiceActive) {
-    container.style.display = 'none';
-  }
+  if (container && !state.eventChoiceActive) { container.style.display = 'none'; }
 }
 
 // =============================================
@@ -360,20 +335,14 @@ function showPrestigeGoalSelection() {
 
 window.selectPrestigeGoal = function(id) {
   var goal = null;
-  for (var i = 0; i < PRESTIGE_GOALS.length; i++) {
-    if (PRESTIGE_GOALS[i].id === id) { goal = PRESTIGE_GOALS[i]; break; }
-  }
-  if (goal) {
-    state.prestigeGoal = goal.id;
-    state.prestigeGoalSelected = true;
-    showToast("🎯 Goal set: " + goal.name);
-  }
+  for (var i = 0; i < PRESTIGE_GOALS.length; i++) { if (PRESTIGE_GOALS[i].id === id) { goal = PRESTIGE_GOALS[i]; break; } }
+  if (goal) { state.prestigeGoal = goal.id; state.prestigeGoalSelected = true; showToast("🎯 Goal set: " + goal.name); }
   var modal = document.getElementById('prestige-goal-modal');
   if (modal) modal.style.display = 'none';
 };
 
 // =============================================
-//  ACHIEVEMENTS (unchanged, but safe)
+//  ACHIEVEMENTS
 // =============================================
 function checkAchievements() {
   for (var i = 0; i < ACHIEVEMENTS.length; i++) {
@@ -438,10 +407,8 @@ function checkAchReq(ach, req) {
   }
 }
 function getAchProgress(ach) {
-  var claimedTier = state.achievementsClaimed[ach.id] || 0;
-  if (claimedTier >= ach.tiers.length) return 1;
-  var currentReq = ach.tiers[claimedTier].req;
-  var prevReq = claimedTier > 0 ? ach.tiers[claimedTier - 1].req : 0;
+  var claimedTier = state.achievementsClaimed[ach.id] || 0; if (claimedTier >= ach.tiers.length) return 1;
+  var currentReq = ach.tiers[claimedTier].req; var prevReq = claimedTier > 0 ? ach.tiers[claimedTier - 1].req : 0;
   if (currentReq === prevReq) return 0;
   var current = 0;
   switch (ach.id) {
@@ -451,7 +418,7 @@ function getAchProgress(ach) {
     case "level": current = state.level; break;
     case "storage": current = state.foodCap; break;
     case "prestige": current = state.prestigeCount; break;
-    case "builder": return ((state.chambers.foodStorage.count > 0 ? 1 : 0) + (state.chambers.nursery.count > 0 ? 1 : 0) + (state.chambers.soldier.count > 0 ? 1 : 0) + (state.chambers.research.count > 0 ? 1 : 0) + (state.chambers.scout.count > 0 ? 1 : 0)) / 5;
+    case "builder": return ((state.chambers.foodStorage.count>0?1:0)+(state.chambers.nursery.count>0?1:0)+(state.chambers.soldier.count>0?1:0)+(state.chambers.research.count>0?1:0)+(state.chambers.scout.count>0?1:0))/5;
     case "rare": current = state.rareAntCount; break;
     case "gem": current = state.totalGemsEarned; break;
     case "explorer": current = state.unlockedZonesList.length - 1; break;
@@ -484,8 +451,7 @@ function getAchProgress(ach) {
   return Math.min(1, Math.max(0, (current - prevReq) / (currentReq - prevReq)));
 }
 function refreshAchievementsUI() {
-  var list = document.getElementById('ach-list');
-  if (!list) return;
+  var list = document.getElementById('ach-list'); if (!list) return;
   var html = "";
   for (var i = 0; i < ACHIEVEMENTS.length; i++) {
     var ach = ACHIEVEMENTS[i];
@@ -493,70 +459,42 @@ function refreshAchievementsUI() {
       html += '<div class="ach-option ach-hidden"><div class="ach-info"><span class="ach-tier diamond">???</span> ❓ ???<br><small style="color:#aaa">Hidden achievement</small></div><span class="ach-status locked">Locked</span></div>';
       continue;
     }
-    var claimedTier = state.achievementsClaimed[ach.id] || 0;
-    var maxTier = ach.tiers.length;
-    var progress = getAchProgress(ach);
-    var status = "";
-    if (claimedTier >= maxTier) {
-      status = '<span class="ach-status claimed">✓ MAX</span>';
-    } else {
-      var next = ach.tiers[claimedTier];
-      status = '<span class="ach-status ready">' + next.desc + ' 💎' + next.reward + '</span>';
-    }
+    var claimedTier = state.achievementsClaimed[ach.id] || 0; var maxTier = ach.tiers.length; var progress = getAchProgress(ach); var status = "";
+    if (claimedTier >= maxTier) { status = '<span class="ach-status claimed">✓ MAX</span>'; }
+    else { var next = ach.tiers[claimedTier]; status = '<span class="ach-status ready">' + next.desc + ' 💎' + next.reward + '</span>'; }
     html += '<div class="ach-option"><div class="ach-info"><span class="ach-tier ' + ach.tier + '">' + ach.tier.toUpperCase() + '</span> ' + ach.icon + ' ' + ach.name + '<br><small style="color:#aaa">Tier ' + (claimedTier + 1) + '/' + maxTier + '</small><div class="ach-progress-bar"><div class="ach-progress-fill" style="width:' + (progress * 100) + '%"></div></div></div>' + status + '</div>';
   }
   list.innerHTML = html;
 }
 
-// Daily challenges
-function getDailyChallengeById(id) {
-  for (var i = 0; i < DAILY_CHALLENGE_POOL.length; i++) { if (DAILY_CHALLENGE_POOL[i].id === id) return DAILY_CHALLENGE_POOL[i]; }
-  return null;
-}
+// =============================================
+//  DAILY CHALLENGES
+// =============================================
+function getDailyChallengeById(id) { for (var i = 0; i < DAILY_CHALLENGE_POOL.length; i++) { if (DAILY_CHALLENGE_POOL[i].id === id) return DAILY_CHALLENGE_POOL[i]; } return null; }
 function checkDailyReset() {
-  var today = getTodayString();
-  if (state.dailyChallengeDate === today) return;
-  state.dailyChallengeDate = today;
-  state.dailyChallengeIds = [];
-  state.dailyProgress = { hatch5: 0, kill8: 0, food300: 0, rally2: 0, boss1: 0, zone1: 0, upgrade1: 0, build1: 0, rare1: 0, night1: 0 };
+  var today = getTodayString(); if (state.dailyChallengeDate === today) return;
+  state.dailyChallengeDate = today; state.dailyChallengeIds = []; state.dailyProgress = { hatch5: 0, kill8: 0, food300: 0, rally2: 0, boss1: 0, zone1: 0, upgrade1: 0, build1: 0, rare1: 0, night1: 0 };
   for (var i = 0; i < DAILY_CHALLENGE_POOL.length; i++) { DAILY_CHALLENGE_POOL[i]._claimed = false; }
   var pool = DAILY_CHALLENGE_POOL.slice();
-  for (var i = 0; i < 3 && pool.length > 0; i++) {
-    var idx = Math.floor(Math.random() * pool.length);
-    state.dailyChallengeIds.push(pool[idx].id);
-    pool.splice(idx, 1);
-  }
+  for (var i = 0; i < 3 && pool.length > 0; i++) { var idx = Math.floor(Math.random() * pool.length); state.dailyChallengeIds.push(pool[idx].id); pool.splice(idx, 1); }
   refreshDailyUI();
 }
 function refreshDailyUI() {
-  var list = document.getElementById('daily-content');
-  if (!list) return;
+  var list = document.getElementById('daily-content'); if (!list) return;
   var html = "";
-  for (var i = 0; i < state.dailyChallengeIds.length; i++) {
-    var ch = getDailyChallengeById(state.dailyChallengeIds[i]);
-    if (!ch) continue;
-    var prog = ch.getProgress();
-    var done = prog >= 1;
-    html += '<div class="daily-challenge' + (done ? ' completed' : '') + '"><span>' + ch.desc + ' 💎' + ch.reward + '</span><span>' + (done ? '✅' : '⬜') + '</span></div>';
-    if (done && !ch._claimed) { ch._claimed = true; state.gems += ch.reward; state.totalGemsEarned += ch.reward; showToast("📋 Daily challenge complete! +" + ch.reward + "💎"); }
-  }
+  for (var i = 0; i < state.dailyChallengeIds.length; i++) { var ch = getDailyChallengeById(state.dailyChallengeIds[i]); if (!ch) continue; var prog = ch.getProgress(); var done = prog >= 1; html += '<div class="daily-challenge' + (done ? ' completed' : '') + '"><span>' + ch.desc + ' 💎' + ch.reward + '</span><span>' + (done ? '✅' : '⬜') + '</span></div>'; if (done && !ch._claimed) { ch._claimed = true; state.gems += ch.reward; state.totalGemsEarned += ch.reward; showToast("📋 Daily challenge complete! +" + ch.reward + "💎"); } }
   list.innerHTML = html;
 }
-function updateDailyProgress(type, amount) {
-  if (state.dailyProgress[type] === undefined) return;
-  state.dailyProgress[type] += amount;
-  refreshDailyUI();
-}
+function updateDailyProgress(type, amount) { if (state.dailyProgress[type] === undefined) return; state.dailyProgress[type] += amount; refreshDailyUI(); }
 
-// Lifetime stats
+// =============================================
+//  LIFETIME STATS
+// =============================================
 function refreshStatsUI() {
-  var el = document.getElementById('stats-content');
-  if (!el) return;
-  var ls = state.lifetimeStats;
-  var pt = ls.totalPlayTime || 0; var h = Math.floor(pt / 3600), m = Math.floor((pt % 3600) / 60);
+  var el = document.getElementById('stats-content'); if (!el) return;
+  var ls = state.lifetimeStats; var pt = ls.totalPlayTime || 0; var h = Math.floor(pt / 3600), m = Math.floor((pt % 3600) / 60);
   var fp = ls.fastestPrestige || 0; var fh = Math.floor(fp / 3600), fm = Math.floor((fp % 3600) / 60), fs = Math.floor(fp % 60);
-  var saveAgo = 'N/A';
-  if (state.lastSaveTime) { var diff = Date.now() - state.lastSaveTime; if (diff < 60000) saveAgo = 'just now'; else if (diff < 3600000) saveAgo = Math.floor(diff / 60000) + 'm ago'; else saveAgo = Math.floor(diff / 3600000) + 'h ago'; }
+  var saveAgo = 'N/A'; if (state.lastSaveTime) { var diff = Date.now() - state.lastSaveTime; if (diff < 60000) saveAgo = 'just now'; else if (diff < 3600000) saveAgo = Math.floor(diff / 60000) + 'm ago'; else saveAgo = Math.floor(diff / 3600000) + 'h ago'; }
   el.innerHTML = '<div class="stat-row"><span>Total Food</span><span class="stat-val">' + formatNum(ls.totalFood || 0) + '</span></div>' +
     '<div class="stat-row"><span>Ants Hatched</span><span class="stat-val">' + formatNum(ls.totalHatched || 0) + '</span></div>' +
     '<div class="stat-row"><span>Spiders Killed</span><span class="stat-val">' + formatNum(ls.totalKills || 0) + '</span></div>' +
@@ -573,39 +511,30 @@ function refreshStatsUI() {
 }
 function formatNum(n) { if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M'; if (n >= 1000) return (n / 1000).toFixed(1) + 'K'; return Math.floor(n).toString(); }
 
-// Prestige roadmap
+// =============================================
+//  PRESTIGE ROADMAP
+// =============================================
 function refreshRoadmapUI() {
-  var el = document.getElementById('roadmap-content');
-  if (!el) return;
+  var el = document.getElementById('roadmap-content'); if (!el) return;
   var html = "";
-  for (var i = 0; i < PRESTIGE_MILESTONES.length; i++) {
-    var m = PRESTIGE_MILESTONES[i];
-    var unlocked = state.prestigeCount >= m.prestige;
-    html += '<div class="roadmap-milestone' + (unlocked ? ' unlocked' : '') + '"><span>' + m.icon + ' Prestige ' + m.prestige + ': ' + m.desc + '</span><span>' + (unlocked ? '✅' : '🔒') + '</span></div>';
-  }
+  for (var i = 0; i < PRESTIGE_MILESTONES.length; i++) { var m = PRESTIGE_MILESTONES[i]; var unlocked = state.prestigeCount >= m.prestige; html += '<div class="roadmap-milestone' + (unlocked ? ' unlocked' : '') + '"><span>' + m.icon + ' Prestige ' + m.prestige + ': ' + m.desc + '</span><span>' + (unlocked ? '✅' : '🔒') + '</span></div>'; }
   el.innerHTML = html;
 }
 
-// Offline progress
+// =============================================
+//  OFFLINE PROGRESS
+// =============================================
 function calculateOfflineProgress() {
-  var now = Date.now();
-  var elapsed = (now - state.lastSaveTime) / 1000;
-  if (elapsed < 30 || state.lastSaveTime === 0) return null;
-  var cappedTime = Math.min(elapsed, 28800);
-  var eff = BAL.offlineEfficiency;
+  var now = Date.now(); var elapsed = (now - state.lastSaveTime) / 1000; if (elapsed < 30 || state.lastSaveTime === 0) return null;
+  var cappedTime = Math.min(elapsed, 28800); var eff = BAL.offlineEfficiency;
   var foodEarned = Math.floor(state.workerCount * getEffectiveFoodPerTrip() * (cappedTime / (state.eggLayTime * 2)) * eff);
-  var eggsLaid = Math.floor(cappedTime / state.eggLayTime * eff);
-  var gemsEarned = Math.floor(cappedTime / 1800 * eff);
-  foodEarned = Math.min(foodEarned, state.foodCap * 3);
-  eggsLaid = Math.min(eggsLaid, 30);
-  gemsEarned = Math.min(gemsEarned, 5);
+  var eggsLaid = Math.floor(cappedTime / state.eggLayTime * eff); var gemsEarned = Math.floor(cappedTime / 1800 * eff);
+  foodEarned = Math.min(foodEarned, state.foodCap * 3); eggsLaid = Math.min(eggsLaid, 30); gemsEarned = Math.min(gemsEarned, 5);
   return { time: cappedTime, food: foodEarned, eggs: eggsLaid, gems: gemsEarned };
 }
 function showOfflineModal(data) {
-  closeAllModals();
-  if (!data || data.time < 30) { checkDailyLogin(); return; }
-  var modal = document.getElementById('offline-modal');
-  if (!modal) return;
+  closeAllModals(); if (!data || data.time < 30) { checkDailyLogin(); return; }
+  var modal = document.getElementById('offline-modal'); if (!modal) return;
   var mins = Math.floor(data.time / 60), hrs = Math.floor(mins / 60), timeStr = hrs > 0 ? hrs + "h " + (mins % 60) + "m" : mins + "m";
   var elTime = document.getElementById('offline-time'); if (elTime) elTime.textContent = "⏰ You were away for " + timeStr;
   var elFood = document.getElementById('offline-food'); if (elFood) elFood.textContent = "🌾 +" + data.food + " food";
@@ -614,123 +543,58 @@ function showOfflineModal(data) {
   modal.style.display = "flex";
   var claimBtn = document.getElementById('offline-claim');
   if (claimBtn) claimBtn.onclick = function() {
-    for (var i = 0; i < data.eggs; i++) {
-      state.eggs++;
-      var m = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), new THREE.MeshStandardMaterial({ color: 0xf5ecd6, roughness: 0.4 }));
-      m.position.copy(qMesh.position);
-      m.position.x += (Math.random() - 0.5) * 1.6;
-      m.position.z += (Math.random() - 0.5) * 1.4;
-      m.scale.setScalar(0.3);
-      scene.add(m);
-      eggMs.push({ mesh: m, mat: m.material, hatchTimer: state.hatchTime, totalHatchTime: state.hatchTime, restX: m.position.x, restZ: m.position.z, settling: false, settleT: 0 });
-    }
-    addFood(data.food);
-    addGems(data.gems);
-    state.earlyGameBoost = Math.max(0, state.earlyGameBoost - data.time);
-    state.bossTimer = Math.max(10, state.bossTimer - data.time);
-    modal.style.display = "none";
-    showToast("✅ Offline rewards collected!");
-    refreshHUD();
-    checkAchievements();
-    checkDailyLogin();
+    for (var i = 0; i < data.eggs; i++) { state.eggs++; var m = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), new THREE.MeshStandardMaterial({ color: 0xf5ecd6, roughness: 0.4 })); m.position.copy(qMesh.position); m.position.x += (Math.random() - 0.5) * 1.6; m.position.z += (Math.random() - 0.5) * 1.4; m.scale.setScalar(0.3); scene.add(m); eggMs.push({ mesh: m, mat: m.material, hatchTimer: state.hatchTime, totalHatchTime: state.hatchTime, restX: m.position.x, restZ: m.position.z, settling: false, settleT: 0 }); }
+    addFood(data.food); addGems(data.gems); state.earlyGameBoost = Math.max(0, state.earlyGameBoost - data.time); state.bossTimer = Math.max(10, state.bossTimer - data.time);
+    modal.style.display = "none"; showToast("✅ Offline rewards collected!"); refreshHUD(); checkAchievements(); checkDailyLogin();
   };
 }
 
-// Daily login
+// =============================================
+//  DAILY LOGIN
+// =============================================
 function getTodayString() { var d = new Date(); return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate(); }
 function checkDailyLogin() {
-  closeAllModals();
-  var today = getTodayString();
-  if (state.lastLoginDay === today) { updateStreakDisplay(); return; }
-  var yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
-  var yesterdayStr = yesterday.getFullYear() + "-" + (yesterday.getMonth() + 1) + "-" + yesterday.getDate();
-  if (state.lastLoginDay === yesterdayStr) { state.dailyStreak++; if (state.dailyStreak > 7) state.dailyStreak = 1; }
-  else { state.dailyStreak = 1; }
-  state.lastLoginDay = today;
-  var dayIndex = (state.dailyStreak - 1) % 7;
-  var reward = DAILY_REWARDS[dayIndex];
-  var gemsEarned = reward.gems;
-  var hasSpecial = reward.special || false;
-  state.gems += gemsEarned;
-  state.totalGemsEarned += gemsEarned;
-  var modal = document.getElementById('daily-modal');
-  if (!modal) return;
+  closeAllModals(); var today = getTodayString(); if (state.lastLoginDay === today) { updateStreakDisplay(); return; }
+  var yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1); var yesterdayStr = yesterday.getFullYear() + "-" + (yesterday.getMonth() + 1) + "-" + yesterday.getDate();
+  if (state.lastLoginDay === yesterdayStr) { state.dailyStreak++; if (state.dailyStreak > 7) state.dailyStreak = 1; } else { state.dailyStreak = 1; }
+  state.lastLoginDay = today; var dayIndex = (state.dailyStreak - 1) % 7; var reward = DAILY_REWARDS[dayIndex]; var gemsEarned = reward.gems; var hasSpecial = reward.special || false;
+  state.gems += gemsEarned; state.totalGemsEarned += gemsEarned;
+  var modal = document.getElementById('daily-modal'); if (!modal) return;
   var streakIcons = ""; for (var i = 0; i < state.dailyStreak; i++) streakIcons += "🔥";
   var streakEl = document.getElementById('daily-streak-icon'); if (streakEl) streakEl.textContent = streakIcons;
   var rewardEl = document.getElementById('daily-reward-text'); if (rewardEl) rewardEl.textContent = "Day " + state.dailyStreak + " — 💎 +" + gemsEarned + " gems";
-  var specialEl = document.getElementById('daily-special-text');
-  if (specialEl) {
-    if (hasSpecial) { specialEl.textContent = "🎁 SPECIAL: Free Golden Ant Egg!"; specialEl.style.display = "block"; }
-    else { specialEl.style.display = "none"; }
-  }
-  modal.style.display = "flex";
-  modal.dataset.special = hasSpecial ? "true" : "false";
+  var specialEl = document.getElementById('daily-special-text'); if (specialEl) { if (hasSpecial) { specialEl.textContent = "🎁 SPECIAL: Free Golden Ant Egg!"; specialEl.style.display = "block"; } else { specialEl.style.display = "none"; } }
+  modal.style.display = "flex"; modal.dataset.special = hasSpecial ? "true" : "false";
   AudioManager.sfx.dailyStreak();
   var claimBtn = document.getElementById('daily-claim');
-  if (claimBtn) claimBtn.onclick = function() {
-    if (modal.dataset.special === "true") {
-      state.workerCount++;
-      var gw = createWorker(true, null, true);
-      if (gw) workers.push(gw);
-      if (state.rallyActive) gw.speed *= BAL.rallySpeedMultiplier;
-      showToast("🥇 Golden worker from daily streak!");
-      refreshHUD();
-    }
-    modal.style.display = "none";
-    showToast("🔥 Day " + state.dailyStreak + " streak! +" + gemsEarned + " 💎");
-    refreshHUD();
-    updateStreakDisplay();
-  };
+  if (claimBtn) claimBtn.onclick = function() { if (modal.dataset.special === "true") { state.workerCount++; var gw = createWorker(true, null, true); if (gw) workers.push(gw); if (state.rallyActive) gw.speed *= BAL.rallySpeedMultiplier; showToast("🥇 Golden worker from daily streak!"); refreshHUD(); } modal.style.display = "none"; showToast("🔥 Day " + state.dailyStreak + " streak! +" + gemsEarned + " 💎"); refreshHUD(); updateStreakDisplay(); };
 }
 function updateStreakDisplay() { var el = document.getElementById('streak-display'); if (el) el.textContent = "🔥" + state.dailyStreak; }
 
-// Prestige modal (modified to include goal selection)
+// =============================================
+//  PRESTIGE MODAL
+// =============================================
 function showPrestigeModal() {
-  closeAllModals();
-  if (state.level < BAL.prestigeLevelReq) { showToast("Reach Level " + BAL.prestigeLevelReq + " to prestige!"); return; }
-  if (!state.prestigeGoalSelected) {
-    showPrestigeGoalSelection();
-    return;
-  }
+  closeAllModals(); if (state.level < BAL.prestigeLevelReq) { showToast("Reach Level " + BAL.prestigeLevelReq + " to prestige!"); return; }
+  if (!state.prestigeGoalSelected) { showPrestigeGoalSelection(); return; }
   var ppGain = Math.floor((state.level - BAL.prestigeLevelReq + 1) * BAL.prestigePPPerLevel) + BAL.prestigeBasePP;
-  // Check if goal completed
   var goalCompleted = false;
-  if (state.prestigeGoal) {
-    for (var i = 0; i < PRESTIGE_GOALS.length; i++) {
-      if (PRESTIGE_GOALS[i].id === state.prestigeGoal && PRESTIGE_GOALS[i].check()) {
-        goalCompleted = true;
-        ppGain += PRESTIGE_GOALS[i].bonusPP;
-        break;
-      }
-    }
-  }
-  var modal = document.getElementById('prestige-modal');
-  if (!modal) return;
+  if (state.prestigeGoal) { for (var i = 0; i < PRESTIGE_GOALS.length; i++) { if (PRESTIGE_GOALS[i].id === state.prestigeGoal && PRESTIGE_GOALS[i].check()) { goalCompleted = true; ppGain += PRESTIGE_GOALS[i].bonusPP; break; } } }
+  var modal = document.getElementById('prestige-modal'); if (!modal) return;
   var infoEl = document.getElementById('prestige-info-text'); if (infoEl) infoEl.textContent = "Reset colony to Level 1 with bonuses.";
-  var rewardEl = document.getElementById('prestige-reward-text');
-  if (rewardEl) {
-    var text = "✨ You will gain " + ppGain + " Prestige Points!";
-    if (goalCompleted) text += " (Goal bonus included!)";
-    rewardEl.textContent = text;
-  }
+  var rewardEl = document.getElementById('prestige-reward-text'); if (rewardEl) { var text = "✨ You will gain " + ppGain + " Prestige Points!"; if (goalCompleted) text += " (Goal bonus included!)"; rewardEl.textContent = text; }
   modal.style.display = "flex";
   var confirmBtn = document.getElementById('prestige-confirm'); if (confirmBtn) confirmBtn.onclick = function() { performPrestige(ppGain); modal.style.display = "none"; };
   var cancelBtn = document.getElementById('prestige-cancel'); if (cancelBtn) cancelBtn.onclick = function() { modal.style.display = "none"; };
 }
 function performPrestige(ppGain) {
-  resetWeatherAndBoosts();
-  var pt = state.lifetimeStats.totalPlayTime + (performance.now() - state.lastTime) / 1000;
-  if (state.prestigeStartTime > 0) {
-    var thisPrestigeTime = pt - state.prestigeStartTime;
-    if (!state.lifetimeStats.fastestPrestige || thisPrestigeTime < state.lifetimeStats.fastestPrestige) state.lifetimeStats.fastestPrestige = thisPrestigeTime;
-  }
-  state.prestigeCount++; state.prestigePoints += ppGain; state.lifetimeStats.totalPrestiges++;
-  state.level = 1; state.xp = 0; state.xpToNext = Math.floor(40 * Math.pow(1.15, 0));
+  resetWeatherAndBoosts(); var pt = state.lifetimeStats.totalPlayTime + (performance.now() - state.lastTime) / 1000;
+  if (state.prestigeStartTime > 0) { var thisPrestigeTime = pt - state.prestigeStartTime; if (!state.lifetimeStats.fastestPrestige || thisPrestigeTime < state.lifetimeStats.fastestPrestige) state.lifetimeStats.fastestPrestige = thisPrestigeTime; }
+  state.prestigeCount++; state.prestigePoints += ppGain; state.lifetimeStats.totalPrestiges++; state.level = 1; state.xp = 0; state.xpToNext = Math.floor(40 * Math.pow(1.15, 0));
   state.food = BAL.baseFoodCap; state.eggs = 0; state.workerCount = 4; state.soldierCount = 0; state.scoutCount = 0;
   AudioManager.sfx.prestige(); triggerShake(8, 0.8);
-  state.chambers = { foodStorage: { count: 0, bonusCap: 0 }, nursery: { count: 0, hatchReduction: 0 }, soldier: { count: 0 }, research: { count: 0 }, scout: { count: 0 } };
-  state.upgrades = { soldierDamage: 0, workerSpeed: 0, eggLayTime: 0, foodCap: 0 };
-  state.expansionTrips = 0; state.unlockedZones = 0; state.virtualWorkers = 0; state.earlyGameBoost = BAL.earlyGameBoostDuration;
+  state.chambers = { foodStorage: { count: 0, bonusCap: 0 }, nursery: { count: 0, hatchReduction: 0 }, soldier: { count: 0 }, research: { count: 0 }, scout: { count: 0 }, royal: { count: 0 } };
+  state.upgrades = { soldierDamage: 0, workerSpeed: 0, eggLayTime: 0, foodCap: 0 }; state.expansionTrips = 0; state.unlockedZones = 0; state.virtualWorkers = 0; state.earlyGameBoost = BAL.earlyGameBoostDuration;
   while (workers.length > 0) { var w = workers.pop(); if (w && w.mesh) { disposeMesh(w.mesh); scene.remove(w.mesh); } }
   while (soldiers.length > 0) { var s = soldiers.pop(); if (s && s.mesh) { disposeMesh(s.mesh); scene.remove(s.mesh); } if (s && s.guardMesh) { disposeMesh(s.guardMesh); scene.remove(s.guardMesh); } }
   while (scouts.length > 0) { var sc = scouts.pop(); if (sc && sc.mesh) { disposeMesh(sc.mesh); scene.remove(sc.mesh); } }
@@ -743,42 +607,27 @@ function performPrestige(ppGain) {
   while (scoutChambers.length > 0) { var ch = scoutChambers.pop(); if (ch && ch.mesh) { disposeMesh(ch.mesh); scene.remove(ch.mesh); } }
   while (storagePiles.length > 0) { var sp = storagePiles.pop(); if (sp) { disposeMesh(sp); scene.remove(sp); } }
   while (nurseryEggClusters.length > 0) { var nc = nurseryEggClusters.pop(); if (nc) { disposeMesh(nc); scene.remove(nc); } }
-  barracksSoldiers = [];
-  if (researchChamberGroup) { disposeMesh(researchChamberGroup); scene.remove(researchChamberGroup); researchChamberGroup = null; }
+  barracksSoldiers = []; if (researchChamberGroup) { disposeMesh(researchChamberGroup); scene.remove(researchChamberGroup); researchChamberGroup = null; }
   if (state.currentBoss) { disposeMesh(state.currentBoss.mesh); scene.remove(state.currentBoss.mesh); state.currentBoss = null; }
   state.bossActive = false; var bossName = document.getElementById('boss-name'); if (bossName) bossName.style.display = 'none'; var bossBar = document.getElementById('boss-health-bar'); if (bossBar) bossBar.style.display = 'none';
   for (var i = 0; i < PRESTIGE_MILESTONES.length; i++) { var m = PRESTIGE_MILESTONES[i]; if (state.prestigeCount >= m.prestige) m.effect(); }
   rebuildAllChambers();
-  if (state.ascensionUpgrades.elderWisdom > 0 && state.chambers.research.count === 0) {
-    state.chambers.research.count = 1;
-    var chX = getNextResearchX();
-    researchChambers.push({ x: chX, mesh: makeChamber(chX, CCY, CZ, 3, 2, 4, 0x3a3a5a) });
-    makeLabel("🔬 Research", chX, CCY + 1.4, CZ, 256, 64, true);
-    researchChamberGroup = new THREE.Group(); researchChamberGroup.position.set(chX, CCY + 1.8, CZ);
-    var orbMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xff8800, emissiveIntensity: 0.8 });
-    for (var i = 0; i < 5; i++) { var orb = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6), orbMat); var angle = (i / 5) * Math.PI * 2; orb.position.set(Math.cos(angle) * 0.6, 0, Math.sin(angle) * 0.6); researchChamberGroup.add(orb); }
-    scene.add(researchChamberGroup);
-  }
+  if (state.ascensionUpgrades.elderWisdom > 0 && state.chambers.research.count === 0) { state.chambers.research.count = 1; var chX = getNextResearchX(); researchChambers.push({ x: chX, mesh: makeChamber(chX, CCY, CZ, 3, 2, 4, 0x3a3a5a) }); makeLabel("🔬 Research", chX, CCY + 1.4, CZ, 256, 64, true); researchChamberGroup = new THREE.Group(); researchChamberGroup.position.set(chX, CCY + 1.8, CZ); var orbMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xff8800, emissiveIntensity: 0.8 }); for (var i = 0; i < 5; i++) { var orb = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6), orbMat); var angle = (i / 5) * Math.PI * 2; orb.position.set(Math.cos(angle) * 0.6, 0, Math.sin(angle) * 0.6); researchChamberGroup.add(orb); } scene.add(researchChamberGroup); }
   for (var wi = 0; wi < state.workerCount; wi++) { var nw = createWorker(false); if (nw) workers.push(nw); }
   buildQueenChamberWalls(); recalculateHatchTime(); updateEggLayTime(); recalculateFoodCap();
   state.bossTimer = BAL.bossIntervalMin + Math.random() * (BAL.bossIntervalMax - BAL.bossIntervalMin);
-  state.prestigeStartTime = state.lifetimeStats.totalPlayTime;
-  state.prestigeGoal = null;
-  state.prestigeGoalSelected = false;
-  state.buildQueue = [];
+  state.prestigeStartTime = state.lifetimeStats.totalPlayTime; state.prestigeGoal = null; state.prestigeGoalSelected = false; state.buildQueue = [];
   emitParticles(_v3.set(TX, GTY + 1.5, TCZ), 40, 0xff44ff, 0.1, 2.0, 1.0);
-  showToast("✨ Prestige complete! Gained " + ppGain + " PP");
-  refreshHUD(); checkAchievements(); saveGame();
+  showToast("✨ Prestige complete! Gained " + ppGain + " PP"); refreshHUD(); checkAchievements(); saveGame();
 }
 
-// Ascension modal (unchanged)
+// =============================================
+//  ASCENSION MODAL
+// =============================================
 function showAscendModal() {
   if (state.prestigeCount < BAL.ascendUnlockPrestige) { showToast("Reach Prestige " + BAL.ascendUnlockPrestige + " to unlock Ascension!"); return; }
   if (state.bossActive) { showToast("Defeat the boss first!"); return; }
-  closeAllModals();
-  var apGain = 1;
-  var modal = document.getElementById('ascend-modal');
-  if (!modal) return;
+  closeAllModals(); var apGain = 1; var modal = document.getElementById('ascend-modal'); if (!modal) return;
   var infoEl = document.getElementById('ascend-info-text'); if (infoEl) infoEl.textContent = "Reset ALL progress to gain 1 Ascension Point.";
   var rewardEl = document.getElementById('ascend-reward-text'); if (rewardEl) rewardEl.textContent = "⬆️ You will gain " + apGain + " AP and permanent multipliers!";
   modal.style.display = "flex";
@@ -786,54 +635,35 @@ function showAscendModal() {
   var cancelBtn = document.getElementById('ascend-cancel'); if (cancelBtn) cancelBtn.onclick = function() { modal.style.display = "none"; };
 }
 function performAscension(apGain) {
-  resetWeatherAndBoosts();
-  var ascCount = state.ascensionCount + apGain;
-  var ascPoints = state.ascensionPoints + apGain;
-  var ascUpgrades = JSON.parse(JSON.stringify(state.ascensionUpgrades));
-  state.colonyName = "Colony " + (currentSlot + 1);
-  state.food = BAL.baseFoodCap; state.gems = 0; state.foodCap = BAL.baseFoodCap;
-  state.level = 1; state.xp = 0; state.xpToNext = Math.floor(40 * Math.pow(1.15, 0));
-  state.eggs = 0; state.workerCount = 4; state.soldierCount = 0; state.scoutCount = 0;
-  state.chambers = { foodStorage: { count: 0, bonusCap: 0 }, nursery: { count: 0, hatchReduction: 0 }, soldier: { count: 0 }, research: { count: 0 }, scout: { count: 0 } };
-  state.upgrades = { soldierDamage: 0, workerSpeed: 0, eggLayTime: 0, foodCap: 0 };
-  state.gemUpgrades = state.gemUpgrades || {};
+  resetWeatherAndBoosts(); var ascCount = state.ascensionCount + apGain; var ascPoints = state.ascensionPoints + apGain; var ascUpgrades = JSON.parse(JSON.stringify(state.ascensionUpgrades));
+  state.colonyName = "Colony " + (currentSlot + 1); state.food = BAL.baseFoodCap; state.gems = 0; state.foodCap = BAL.baseFoodCap;
+  state.level = 1; state.xp = 0; state.xpToNext = Math.floor(40 * Math.pow(1.15, 0)); state.eggs = 0; state.workerCount = 4; state.soldierCount = 0; state.scoutCount = 0;
+  state.chambers = { foodStorage: { count: 0, bonusCap: 0 }, nursery: { count: 0, hatchReduction: 0 }, soldier: { count: 0 }, research: { count: 0 }, scout: { count: 0 }, royal: { count: 0 } };
+  state.upgrades = { soldierDamage: 0, workerSpeed: 0, eggLayTime: 0, foodCap: 0 }; state.gemUpgrades = state.gemUpgrades || {};
   state.expansionTrips = 0; state.unlockedZones = 0; state.rallyActive = false; state.rallyTimer = 0; state.rallyCooldown = 0;
   state.waveActive = false; state.waveTimer = 35; state.surgeActive = false; state.surgeTimer = 60 + Math.random() * 30;
   state.eventActive = false; state.eventTimer = 35 + Math.random() * 25; state.weatherActive = false; state.weatherTimer = 70 + Math.random() * 40;
   state.isNight = false; state.rareAntCount = 0; state.nestEvolutionLevel = 0; state.totalHatched = 0; state.totalKills = 0; state.totalGemsEarned = 0;
-  state.achievementsClaimed = state.achievementsClaimed || {};
-  state.dailyStreak = state.dailyStreak || 0; state.lastLoginDay = state.lastLoginDay || "";
-  state.earlyGameBoost = BAL.earlyGameBoostDuration;
-  state.survivedNight = 0; state.rallyUses = 0; state.surgesCollected = 0; state.virtualWorkers = 0;
-  state.evolution = { worker: 0, soldier: 0, scout: 0 };
+  state.achievementsClaimed = state.achievementsClaimed || {}; state.dailyStreak = state.dailyStreak || 0; state.lastLoginDay = state.lastLoginDay || ""; state.earlyGameBoost = BAL.earlyGameBoostDuration;
+  state.survivedNight = 0; state.rallyUses = 0; state.surgesCollected = 0; state.virtualWorkers = 0; state.evolution = { worker: 0, soldier: 0, scout: 0 };
   state.bossActive = false; state.bossTimer = BAL.bossIntervalMin + Math.random() * (BAL.bossIntervalMax - BAL.bossIntervalMin);
-  state.bossKills = 0; state.bossType = null; state.currentBoss = null;
-  state.prestigeCount = 0; state.prestigePoints = 0; state.prestigeUpgrades = { ppFood: 0, ppSpeed: 0, ppHatch: 0, ppCap: 0, ppGem: 0, ppBoss: 0 };
-  state.prestigeFoodBonus = 0;
-  state.currentZone = "forest"; state.unlockedZonesList = ["forest"];
-  state.speedBoostTimer = 0; state.luckyHourTimer = 0; state.defenseBannerTimer = 0;
-  state.beetleKills = 0; state.waspKills = 0;
-  state.tutorialsShown = {}; state.queenClicks = 0; state.prestigeStartTime = 0; state.prestigeStartLevel = 0;
+  state.bossKills = 0; state.bossType = null; state.currentBoss = null; state.prestigeCount = 0; state.prestigePoints = 0;
+  state.prestigeUpgrades = { ppFood: 0, ppSpeed: 0, ppHatch: 0, ppCap: 0, ppGem: 0, ppBoss: 0 }; state.prestigeFoodBonus = 0;
+  state.currentZone = "forest"; state.unlockedZonesList = ["forest"]; state.speedBoostTimer = 0; state.luckyHourTimer = 0; state.defenseBannerTimer = 0;
+  state.beetleKills = 0; state.waspKills = 0; state.tutorialsShown = {}; state.queenClicks = 0; state.prestigeStartTime = 0; state.prestigeStartLevel = 0;
   state.dailyChallengeDate = ""; state.dailyChallengeIds = []; state.dailyProgress = { hatch5: 0, kill8: 0, food300: 0, rally2: 0, boss1: 0, zone1: 0, upgrade1: 0, build1: 0, rare1: 0, night1: 0 };
   state.lifetimeStats = { totalFood: 0, totalHatched: 0, totalKills: 0, totalBossKills: 0, totalPrestiges: 0, totalPlayTime: 0, totalGems: 0, totalRallies: 0, totalSurges: 0, totalNights: 0, fastestPrestige: 0 };
   state.ascensionCount = ascCount; state.ascensionPoints = ascPoints; state.ascensionUpgrades = ascUpgrades; state.hasAscended = true;
-  state.caveBossKills = 0; state.swampBossKills = 0; state.mountainBossKills = 0;
-  state.buildQueue = [];
-  state.prestigeGoal = null;
-  state.prestigeGoalSelected = false;
-  state.eventChoices = [];
-  state.eventChoiceActive = false;
-  clearAllMeshes();
-  buildQueenChamberWalls(); rebuildAllChambers();
+  state.caveBossKills = 0; state.swampBossKills = 0; state.mountainBossKills = 0; state.buildQueue = []; state.prestigeGoal = null; state.prestigeGoalSelected = false;
+  state.eventChoices = []; state.eventChoiceActive = false; state.researchBonuses = { foodPerTrip: 0, soldierHealth: 0, soldierDamage: 0, discoveryChance: 0, zoneTripReduction: 0, eggLayReduction: 0, scoutSpeed: 0, poisonResist: false, queensWrathUnlocked: false, pheromoneShieldUnlocked: false };
+  state.completedResearch = []; state.queensWrathActive = false; state.queensWrathTimer = 0; state.queenProtected = false; state._royalGroups = [];
+  clearAllMeshes(); buildQueenChamberWalls(); rebuildAllChambers();
   for (var wi = 0; wi < state.workerCount; wi++) { var nw = createWorker(false); if (nw) workers.push(nw); }
   recalculateHatchTime(); updateEggLayTime(); recalculateFoodCap();
   state.bossTimer = BAL.bossIntervalMin + Math.random() * (BAL.bossIntervalMax - BAL.bossIntervalMin);
-  AudioManager.sfx.ascend();
-  emitParticles(_v3.set(TX, GTY + 1.5, TCZ), 60, 0xffaa00, 0.12, 2.5, 1.2);
-  showToast("⬆️ Ascension complete! +1 AP, permanent multipliers active!");
-  refreshHUD(); checkAchievements(); saveGame();
-  var cfg = ZONE_CONFIG.forest;
-  scene.background = new THREE.Color(cfg.bg); scene.fog = new THREE.Fog(cfg.fog, 20, 80);
+  AudioManager.sfx.ascend(); emitParticles(_v3.set(TX, GTY + 1.5, TCZ), 60, 0xffaa00, 0.12, 2.5, 1.2);
+  showToast("⬆️ Ascension complete! +1 AP, permanent multipliers active!"); refreshHUD(); checkAchievements(); saveGame();
+  var cfg = ZONE_CONFIG.forest; scene.background = new THREE.Color(cfg.bg); scene.fog = new THREE.Fog(cfg.fog, 20, 80);
   var zoneDisp = document.getElementById('zone-display'); if (zoneDisp) zoneDisp.textContent = cfg.label;
 }
 function clearAllMeshes() {
@@ -855,82 +685,48 @@ function clearAllMeshes() {
   var bossBar = document.getElementById('boss-health-bar'); if (bossBar) bossBar.style.display = 'none';
 }
 
-// Ascension shop UI
+// =============================================
+//  ASCENSION SHOP UI
+// =============================================
 function refreshAscensionShopUI() {
-  var list = document.getElementById('ascension-shop-list');
-  if (!list) return;
+  var list = document.getElementById('ascension-shop-list'); if (!list) return;
   var html = "";
-  for (var i = 0; i < ASCENSION_SHOP.length; i++) {
-    var item = ASCENSION_SHOP[i];
-    var lv = state.ascensionUpgrades[item.id] || 0;
-    var owned = lv >= item.maxLevel;
-    html += '<div class="ascension-option"><span>' + item.icon + ' ' + item.name + '<br><small style="color:#aaa">' + item.desc + '</small></span>';
-    html += '<button ' + (owned ? 'disabled' : '') + ' onclick="window._buyAsc(\'' + item.id + '\')">' + (owned ? '✅ Owned' : item.cost + ' AP') + '</button></div>';
-  }
+  for (var i = 0; i < ASCENSION_SHOP.length; i++) { var item = ASCENSION_SHOP[i]; var lv = state.ascensionUpgrades[item.id] || 0; var owned = lv >= item.maxLevel; html += '<div class="ascension-option"><span>' + item.icon + ' ' + item.name + '<br><small style="color:#aaa">' + item.desc + '</small></span>'; html += '<button ' + (owned ? 'disabled' : '') + ' onclick="window._buyAsc(\'' + item.id + '\')">' + (owned ? '✅ Owned' : item.cost + ' AP') + '</button></div>'; }
   list.innerHTML = html;
 }
 window._buyAsc = buyAscensionUpgrade;
 
-// Prestige shop UI
+// =============================================
+//  PRESTIGE SHOP UI
+// =============================================
 function refreshPrestigeShopUI() {
-  var list = document.getElementById('prestige-shop-list');
-  if (!list) return;
+  var list = document.getElementById('prestige-shop-list'); if (!list) return;
   var html = "";
-  for (var i = 0; i < PRESTIGE_SHOP.length; i++) {
-    var item = PRESTIGE_SHOP[i];
-    var lv = state.prestigeUpgrades[item.id] || 0;
-    var owned = lv >= item.maxLevel;
-    html += '<div class="prestige-option"><span>' + item.icon + ' ' + item.name + '<br><small style="color:#aaa">' + item.desc + '</small></span>';
-    html += '<button ' + (owned ? 'disabled' : '') + ' onclick="window._buyPP(\'' + item.id + '\')">' + (owned ? '✅ Owned' : item.cost + ' PP') + '</button></div>';
-  }
+  for (var i = 0; i < PRESTIGE_SHOP.length; i++) { var item = PRESTIGE_SHOP[i]; var lv = state.prestigeUpgrades[item.id] || 0; var owned = lv >= item.maxLevel; html += '<div class="prestige-option"><span>' + item.icon + ' ' + item.name + '<br><small style="color:#aaa">' + item.desc + '</small></span>'; html += '<button ' + (owned ? 'disabled' : '') + ' onclick="window._buyPP(\'' + item.id + '\')">' + (owned ? '✅ Owned' : item.cost + ' PP') + '</button></div>'; }
   list.innerHTML = html;
 }
 function buyPrestigeUpgrade(id) {
-  var item = null;
-  for (var i = 0; i < PRESTIGE_SHOP.length; i++) { if (PRESTIGE_SHOP[i].id === id) { item = PRESTIGE_SHOP[i]; break; } }
-  if (!item) return;
-  var lv = state.prestigeUpgrades[id] || 0;
-  if (lv >= item.maxLevel) { showToast("Already max level!"); return; }
-  if (state.prestigePoints < item.cost) { showToast("Need " + item.cost + " PP!"); return; }
-  state.prestigePoints -= item.cost;
-  state.prestigeUpgrades[id] = lv + 1;
-  AudioManager.sfx.upgrade();
-  showToast(item.icon + " " + item.name + " upgraded!");
-  refreshPrestigeShopUI();
-  refreshHUD();
-  saveGame();
+  var item = null; for (var i = 0; i < PRESTIGE_SHOP.length; i++) { if (PRESTIGE_SHOP[i].id === id) { item = PRESTIGE_SHOP[i]; break; } } if (!item) return;
+  var lv = state.prestigeUpgrades[id] || 0; if (lv >= item.maxLevel) { showToast("Already max level!"); return; } if (state.prestigePoints < item.cost) { showToast("Need " + item.cost + " PP!"); return; }
+  state.prestigePoints -= item.cost; state.prestigeUpgrades[id] = lv + 1; AudioManager.sfx.upgrade(); showToast(item.icon + " " + item.name + " upgraded!"); refreshPrestigeShopUI(); refreshHUD(); saveGame();
 }
 window._buyPP = buyPrestigeUpgrade;
 
-// Evolution UI
+// =============================================
+//  EVOLUTION UI
+// =============================================
 function refreshEvolutionUI() {
-  var list = document.getElementById('evo-list');
-  if (!list) return;
-  var html = "";
-  var types = ["worker", "soldier", "scout"];
-  for (var ti = 0; ti < types.length; ti++) {
-    var type = types[ti];
-    var evo = EVOLUTION_TREE[type];
-    var ct = state.evolution[type] || 0;
-    html += '<div style="color:#ff88cc;font-weight:700;margin-top:4px;">' + evo.name + ' (Tier ' + ct + '/' + evo.tiers.length + ')</div>';
-    for (var i = 0; i < evo.tiers.length; i++) {
-      var tier = evo.tiers[i];
-      var unlocked = i < ct;
-      var available = i === ct;
-      var locked = i > ct;
-      if (available && tier.reqPrestige && state.prestigeCount < tier.reqPrestige) { available = false; locked = true; }
-      html += '<div class="evo-option"><span>' + tier.icon + ' ' + tier.name + '<br><small style="color:#aaa">' + tier.desc + (tier.reqPrestige ? ' (Req. Prestige ' + tier.reqPrestige + ')' : '') + '</small></span>';
-      if (unlocked) html += '<span style="color:#4a4;">✓ Owned</span>';
-      else if (available) html += '<button onclick="window._buyEvo(\'' + type + '\')">' + tier.cost + ' 🌾</button>';
-      else html += '<span style="color:#888;">Locked</span>';
-      html += '</div>';
-    }
-  }
+  var list = document.getElementById('evo-list'); if (!list) return;
+  var html = ""; var types = ["worker", "soldier", "scout"];
+  for (var ti = 0; ti < types.length; ti++) { var type = types[ti]; var evo = EVOLUTION_TREE[type]; var ct = state.evolution[type] || 0; html += '<div style="color:#ff88cc;font-weight:700;margin-top:4px;">' + evo.name + ' (Tier ' + ct + '/' + evo.tiers.length + ')</div>';
+    for (var i = 0; i < evo.tiers.length; i++) { var tier = evo.tiers[i]; var unlocked = i < ct; var available = i === ct; var locked = i > ct; if (available && tier.reqPrestige && state.prestigeCount < tier.reqPrestige) { available = false; locked = true; } html += '<div class="evo-option"><span>' + tier.icon + ' ' + tier.name + '<br><small style="color:#aaa">' + tier.desc + (tier.reqPrestige ? ' (Req. Prestige ' + tier.reqPrestige + ')' : '') + '</small></span>'; if (unlocked) html += '<span style="color:#4a4;">✓ Owned</span>'; else if (available) html += '<button onclick="window._buyEvo(\'' + type + '\')">' + tier.cost + ' 🌾</button>'; else html += '<span style="color:#888;">Locked</span>'; html += '</div>'; } }
   list.innerHTML = html;
 }
 window._buyEvo = buyEvolution;
 
-// Upgrade UI
+// =============================================
+//  UPGRADE UI
+// =============================================
 function refreshUpgradeUI() {
   function fmt(type) { var lv = state.upgrades[type], max = UPGRADES[type].maxLevel; var cost = lv < max ? getUpgradeCost(type) : 0; return "Lv" + lv + "/" + max + (lv < max ? " " + cost + "🌾" : " MAX"); }
   var elDmg = document.getElementById("upg-damage"); if (elDmg) elDmg.textContent = fmt("soldierDamage");
@@ -943,316 +739,91 @@ function refreshUpgradeUI() {
   var btnCap = document.getElementById("btn-upg-cap"); if (btnCap) btnCap.disabled = state.upgrades.foodCap >= UPGRADES.foodCap.maxLevel;
 }
 
-// Build buttons
+// =============================================
+//  BUILD BUTTONS
+// =============================================
 function updateBuildButtons() {
-  var bfs = document.getElementById("build-food-storage"), bn = document.getElementById("build-nursery"),
-      bs = document.getElementById("build-soldier"), br = document.getElementById("build-research"),
-      bsc = document.getElementById("build-scout");
+  var bfs = document.getElementById("build-food-storage"), bn = document.getElementById("build-nursery"), bs = document.getElementById("build-soldier"), br = document.getElementById("build-research"), bsc = document.getElementById("build-scout"), broyal = document.getElementById("build-royal");
   if (bfs) bfs.disabled = state.chambers.foodStorage.count >= BAL.maxStorage;
   if (bn) bn.disabled = state.chambers.nursery.count >= BAL.maxNursery;
   if (bs) bs.disabled = state.chambers.soldier.count >= BAL.maxSoldierChambers;
   if (br) br.disabled = state.chambers.research.count >= 1;
   if (bsc) bsc.disabled = state.chambers.scout.count >= BAL.maxScoutChambers;
+  if (broyal) broyal.disabled = (state.chambers.royal && state.chambers.royal.count >= 1);
   updateBuildButtonLabels();
 }
 function updateBuildButtonLabels() {
-  var bfs = document.getElementById("build-food-storage"), bn = document.getElementById("build-nursery"),
-      bs = document.getElementById("build-soldier"), br = document.getElementById("build-research"),
-      bsc = document.getElementById("build-scout");
+  var bfs = document.getElementById("build-food-storage"), bn = document.getElementById("build-nursery"), bs = document.getElementById("build-soldier"), br = document.getElementById("build-research"), bsc = document.getElementById("build-scout"), broyal = document.getElementById("build-royal");
   if (bfs && !bfs.disabled) bfs.textContent = getStorageCost() + "🌾";
   if (bn && !bn.disabled) bn.textContent = getEffectiveChamberCost(BAL.nurseryCost) + "🌾";
   if (bs && !bs.disabled) bs.textContent = getEffectiveChamberCost(BAL.soldierChamberCost) + "🌾";
   if (br && !br.disabled) br.textContent = getEffectiveChamberCost(BAL.researchChamberCost) + "🌾";
   if (bsc && !bsc.disabled) bsc.textContent = getEffectiveChamberCost(BAL.scoutChamberCost) + "🌾";
-}
-
-// Build queue functions
-function enqueueBuild(type) {
-  var cost, max, curr;
-  switch(type) {
-    case "foodStorage": cost = getStorageCost(); max = BAL.maxStorage; curr = state.chambers.foodStorage.count; break;
-    case "nursery": cost = getEffectiveChamberCost(BAL.nurseryCost); max = BAL.maxNursery; curr = state.chambers.nursery.count; break;
-    case "soldier": cost = getEffectiveChamberCost(BAL.soldierChamberCost); max = BAL.maxSoldierChambers; curr = state.chambers.soldier.count; break;
-    case "research": cost = getEffectiveChamberCost(BAL.researchChamberCost); max = 1; curr = state.chambers.research.count; break;
-    case "scout": cost = getEffectiveChamberCost(BAL.scoutChamberCost); max = BAL.maxScoutChambers; curr = state.chambers.scout.count; break;
-    default: return;
-  }
-  if (curr >= max) { showToast("Max reached!"); return; }
-  if (state.food < cost) { showToast("Need " + cost + " food!"); return; }
-  state.food -= cost;
-  state.buildQueue.push({ type: type, timeRemaining: BAL.buildTimes[type], totalTime: BAL.buildTimes[type] });
-  updateBuildButtonLabels();
-  refreshBuildQueueUI();
-  refreshHUD();
-}
-
-function buildFoodStorageChamber() {
-  if (state.chambers.foodStorage.count >= BAL.maxStorage) { showToast("Max storage reached!"); return; }
-  var chX = getNextStorageX();
-  storageChambers.push(makeChamber(chX, CCY, CZ, 3, 2, 4, 0x5a4020));
-  makeLabel("🌾 Storage", chX, CCY + 1.4, CZ, 256, 64, true);
-  var pile = new THREE.Group(); pile.position.set(chX, CCY - 0.8, CZ); scene.add(pile); storagePiles.push(pile);
-  state.chambers.foodStorage.count++;
-  state.chambers.foodStorage.bonusCap += BAL.foodCapPerStorage;
-  recalculateFoodCap();
-  AudioManager.sfx.buttonClick(); updateDailyProgress('build1', 1);
-  showToast("Food Storage built! +" + BAL.foodCapPerStorage);
-  refreshHUD(); updateBuildButtons(); checkAchievements(); checkTutorials();
-}
-function buildNurseryChamber() {
-  if (state.chambers.nursery.count >= BAL.maxNursery) { showToast("Max nurseries!"); return; }
-  var chX = TX - 5 - state.chambers.nursery.count * 3.5;
-  nurseryChambers.push(makeChamber(chX, CCY, CZ, 3, 2, 4, 0x6b5040));
-  makeLabel("🥚 Nursery", chX, CCY + 1.4, CZ, 256, 64, true);
-  var cluster = new THREE.Group(); cluster.position.set(chX, CCFY + 0.05, CZ); scene.add(cluster); nurseryEggClusters.push(cluster);
-  state.chambers.nursery.count++; state.chambers.nursery.hatchReduction += 2; recalculateHatchTime();
-  buildQueenChamberWalls();
-  AudioManager.sfx.buttonClick(); updateDailyProgress('build1', 1);
-  showToast("Nursery built! Hatch -2s"); refreshHUD(); updateBuildButtons(); checkAchievements();
-}
-function buildSoldierChamber() {
-  if (state.chambers.soldier.count >= BAL.maxSoldierChambers) { showToast("Max soldier chambers!"); return; }
-  var chX = getNextSoldierX();
-  soldierChambers.push({ x: chX, mesh: makeChamber(chX, CCY, CZ, 3, 2, 4, 0x4a2a1a) });
-  makeLabel("🛡️ Barracks", chX, CCY + 1.4, CZ, 256, 64, true);
-  state.chambers.soldier.count++;
-  state.soldierCount++; spawnSoldier(chX);
-  AudioManager.sfx.buttonClick(); updateDailyProgress('build1', 1);
-  showToast("Soldier +1"); refreshHUD(); updateBuildButtons(); checkAchievements();
-}
-function buildResearchChamber() {
-  if (state.chambers.research.count >= 1) { showToast("Only one research chamber!"); return; }
-  var chX = getNextResearchX();
-  researchChambers.push({ x: chX, mesh: makeChamber(chX, CCY, CZ, 3, 2, 4, 0x3a3a5a) });
-  makeLabel("🔬 Research", chX, CCY + 1.4, CZ, 256, 64, true);
-  state.chambers.research.count++;
-  researchChamberGroup = new THREE.Group(); researchChamberGroup.position.set(chX, CCY + 1.8, CZ);
-  var orbMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xff8800, emissiveIntensity: 0.8 });
-  for (var i = 0; i < 5; i++) { var orb = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6), orbMat); var angle = (i / 5) * Math.PI * 2; orb.position.set(Math.cos(angle) * 0.6, 0, Math.sin(angle) * 0.6); researchChamberGroup.add(orb); }
-  scene.add(researchChamberGroup);
-  var btns = ["btn-upgrades", "btn-shop", "btn-achievements", "btn-daily"];
-  for (var bi = 0; bi < btns.length; bi++) { var b = document.getElementById(btns[bi]); if (b) b.style.display = "inline-block"; }
-  if (state.level >= BAL.evolutionUnlockLevel) { var evoBtn = document.getElementById("btn-evolution"); if (evoBtn) evoBtn.style.display = "inline-block"; }
-  AudioManager.sfx.buttonClick(); updateDailyProgress('build1', 1);
-  showToast("Research Chamber built!"); refreshHUD(); updateBuildButtons(); checkAchievements(); checkTutorials();
-}
-function buildScoutChamber() {
-  if (state.chambers.scout.count >= BAL.maxScoutChambers) { showToast("Max scout chambers!"); return; }
-  var chX = getNextScoutX();
-  scoutChambers.push({ x: chX, mesh: makeChamber(chX, CCY, CZ, 3, 2, 4, 0x3a5a3a) });
-  makeLabel("🔍 Scout Post", chX, CCY + 1.4, CZ, 256, 64, true);
-  state.chambers.scout.count++;
-  state.scoutCount++; spawnScout();
-  AudioManager.sfx.buttonClick(); updateDailyProgress('build1', 1);
-  showToast("Scout +1"); refreshHUD(); updateBuildButtons(); checkAchievements();
+  if (broyal && !broyal.disabled) broyal.textContent = "300🌾";
 }
 
 // =============================================
-//  SHOP CATEGORY TABS (safe)
+//  SHOP CATEGORY TABS
 // =============================================
 function setupShopTabs() {
-  var tabPermanent = document.getElementById("shop-tab-permanent");
-  var tabConsumable = document.getElementById("shop-tab-consumable");
-  var tabSkins = document.getElementById("shop-tab-skins");
-  var listPermanent = document.getElementById("shop-list-permanent");
-  var listConsumable = document.getElementById("shop-list-consumable");
-  var listSkins = document.getElementById("shop-list-skins");
+  var tabPermanent = document.getElementById("shop-tab-permanent"), tabConsumable = document.getElementById("shop-tab-consumable"), tabSkins = document.getElementById("shop-tab-skins");
+  var listPermanent = document.getElementById("shop-list-permanent"), listConsumable = document.getElementById("shop-list-consumable"), listSkins = document.getElementById("shop-list-skins");
   if (!tabPermanent || !listPermanent) return;
-
-  function showTab(tabId) {
-    listPermanent.style.display = (tabId === 'permanent') ? 'block' : 'none';
-    listConsumable.style.display = (tabId === 'consumable') ? 'block' : 'none';
-    listSkins.style.display = (tabId === 'skins') ? 'block' : 'none';
-    tabPermanent.className = (tabId === 'permanent') ? 'active' : '';
-    tabConsumable.className = (tabId === 'consumable') ? 'active' : '';
-    tabSkins.className = (tabId === 'skins') ? 'active' : '';
-  }
-
-  tabPermanent.onclick = function() { showTab('permanent'); };
-  tabConsumable.onclick = function() { showTab('consumable'); };
-  tabSkins.onclick = function() { showTab('skins'); };
-  showTab('permanent');
+  function showTab(tabId) { listPermanent.style.display = (tabId === 'permanent') ? 'block' : 'none'; listConsumable.style.display = (tabId === 'consumable') ? 'block' : 'none'; listSkins.style.display = (tabId === 'skins') ? 'block' : 'none'; tabPermanent.className = (tabId === 'permanent') ? 'active' : ''; tabConsumable.className = (tabId === 'consumable') ? 'active' : ''; tabSkins.className = (tabId === 'skins') ? 'active' : ''; }
+  tabPermanent.onclick = function() { showTab('permanent'); }; tabConsumable.onclick = function() { showTab('consumable'); }; tabSkins.onclick = function() { showTab('skins'); }; showTab('permanent');
 }
 
 // =============================================
-//  BUTTON SETUP for decluttered UI
+//  BUTTON SETUP
 // =============================================
 function setupButtons() {
-  buildPanel = document.getElementById("build-panel");
-  upgradePanel = document.getElementById("upgrade-panel");
-  shopPanel = document.getElementById("shop-panel");
-  achPanel = document.getElementById("achievements-panel");
-  evoPanel = document.getElementById("evolution-panel");
-  ppPanel = document.getElementById("prestige-shop-panel");
-  ascPanel = document.getElementById("ascension-shop-panel");
+  buildPanel = document.getElementById("build-panel"); upgradePanel = document.getElementById("upgrade-panel"); shopPanel = document.getElementById("shop-panel");
+  achPanel = document.getElementById("achievements-panel"); evoPanel = document.getElementById("evolution-panel"); ppPanel = document.getElementById("prestige-shop-panel");
+  ascPanel = document.getElementById("ascension-shop-panel"); researchPanel = document.getElementById("research-panel");
 
-  function closeAllPanels() {
-    [buildPanel, upgradePanel, shopPanel, achPanel, evoPanel, ppPanel, ascPanel].forEach(function(p) { if (p) p.classList.remove("open"); });
-  }
+  function closeAllPanels() { [buildPanel, upgradePanel, shopPanel, achPanel, evoPanel, ppPanel, ascPanel, researchPanel].forEach(function(p) { if (p) p.classList.remove("open"); }); }
 
-  // Build
-  var btnBuild = document.getElementById("btn-build");
-  if (btnBuild) btnBuild.onclick = function() {
-    AudioManager.sfx.buttonClick();
-    if (buildPanel.classList.contains("open")) { buildPanel.classList.remove("open"); } else { closeAllPanels(); buildPanel.classList.add("open"); updateBuildButtonLabels(); refreshBuildQueueUI(); }
-  };
-  // Upgrade
-  var btnUpgrades = document.getElementById("btn-upgrades");
-  if (btnUpgrades) btnUpgrades.onclick = function() {
-    AudioManager.sfx.buttonClick();
-    if (upgradePanel.classList.contains("open")) { upgradePanel.classList.remove("open"); } else { closeAllPanels(); upgradePanel.classList.add("open"); refreshUpgradeUI(); }
-  };
-  // Shop
-  var btnShop = document.getElementById("btn-shop");
-  if (btnShop) btnShop.onclick = function() {
-    AudioManager.sfx.buttonClick();
-    if (shopPanel.classList.contains("open")) { shopPanel.classList.remove("open"); } else { closeAllPanels(); shopPanel.classList.add("open"); setupShopTabs(); }
-  };
-  // Evolution (inside More)
-  var btnEvo = document.getElementById("btn-evolution");
-  if (btnEvo) btnEvo.onclick = function() {
-    AudioManager.sfx.buttonClick();
-    if (evoPanel.classList.contains("open")) { evoPanel.classList.remove("open"); } else { closeAllPanels(); evoPanel.classList.add("open"); refreshEvolutionUI(); }
-  };
-  // Achievements (inside More)
-  var btnAch = document.getElementById("btn-achievements");
-  if (btnAch) btnAch.onclick = function() {
-    AudioManager.sfx.buttonClick();
-    if (achPanel.classList.contains("open")) { achPanel.classList.remove("open"); } else { closeAllPanels(); achPanel.classList.add("open"); refreshAchievementsUI(); }
-  };
-  // Prestige shop (inside More)
-  var btnPP = document.getElementById("btn-prestige-shop");
-  if (btnPP) btnPP.onclick = function() {
-    AudioManager.sfx.buttonClick();
-    if (ppPanel.classList.contains("open")) { ppPanel.classList.remove("open"); } else { closeAllPanels(); ppPanel.classList.add("open"); refreshPrestigeShopUI(); }
-  };
-  // Ascension shop (inside More)
-  var btnAsc = document.getElementById("btn-ascension-shop");
-  if (btnAsc) btnAsc.onclick = function() {
-    AudioManager.sfx.buttonClick();
-    if (ascPanel.classList.contains("open")) { ascPanel.classList.remove("open"); } else { closeAllPanels(); ascPanel.classList.add("open"); refreshAscensionShopUI(); }
-  };
-  // Daily (inside More)
-  var btnDaily = document.getElementById("btn-daily");
-  if (btnDaily) btnDaily.onclick = function() {
-    AudioManager.sfx.buttonClick();
-    var dp = document.getElementById('daily-panel');
-    dp.style.display = dp.style.display === 'flex' ? 'none' : 'flex';
-    refreshDailyUI();
-  };
+  var btnBuild = document.getElementById("btn-build"); if (btnBuild) btnBuild.onclick = function() { AudioManager.sfx.buttonClick(); if (buildPanel.classList.contains("open")) { buildPanel.classList.remove("open"); } else { closeAllPanels(); buildPanel.classList.add("open"); updateBuildButtonLabels(); refreshBuildQueueUI(); } };
+  var btnUpgrades = document.getElementById("btn-upgrades"); if (btnUpgrades) btnUpgrades.onclick = function() { AudioManager.sfx.buttonClick(); if (upgradePanel.classList.contains("open")) { upgradePanel.classList.remove("open"); } else { closeAllPanels(); upgradePanel.classList.add("open"); refreshUpgradeUI(); } };
+  var btnShop = document.getElementById("btn-shop"); if (btnShop) btnShop.onclick = function() { AudioManager.sfx.buttonClick(); if (shopPanel.classList.contains("open")) { shopPanel.classList.remove("open"); } else { closeAllPanels(); shopPanel.classList.add("open"); setupShopTabs(); } };
+  var btnEvo = document.getElementById("btn-evolution"); if (btnEvo) btnEvo.onclick = function() { AudioManager.sfx.buttonClick(); if (evoPanel.classList.contains("open")) { evoPanel.classList.remove("open"); } else { closeAllPanels(); evoPanel.classList.add("open"); refreshEvolutionUI(); } };
+  var btnAch = document.getElementById("btn-achievements"); if (btnAch) btnAch.onclick = function() { AudioManager.sfx.buttonClick(); if (achPanel.classList.contains("open")) { achPanel.classList.remove("open"); } else { closeAllPanels(); achPanel.classList.add("open"); refreshAchievementsUI(); } };
+  var btnResearch = document.getElementById("btn-research"); if (btnResearch) btnResearch.onclick = function() { AudioManager.sfx.buttonClick(); if (researchPanel && researchPanel.classList.contains("open")) { researchPanel.classList.remove("open"); } else { closeAllPanels(); if (researchPanel) researchPanel.classList.add("open"); if (typeof refreshResearchUI === 'function') refreshResearchUI(); } };
+  var btnPP = document.getElementById("btn-prestige-shop"); if (btnPP) btnPP.onclick = function() { AudioManager.sfx.buttonClick(); if (ppPanel.classList.contains("open")) { ppPanel.classList.remove("open"); } else { closeAllPanels(); ppPanel.classList.add("open"); refreshPrestigeShopUI(); } };
+  var btnAsc = document.getElementById("btn-ascension-shop"); if (btnAsc) btnAsc.onclick = function() { AudioManager.sfx.buttonClick(); if (ascPanel.classList.contains("open")) { ascPanel.classList.remove("open"); } else { closeAllPanels(); ascPanel.classList.add("open"); refreshAscensionShopUI(); } };
+  var btnDaily = document.getElementById("btn-daily"); if (btnDaily) btnDaily.onclick = function() { AudioManager.sfx.buttonClick(); var dp = document.getElementById('daily-panel'); dp.style.display = dp.style.display === 'flex' ? 'none' : 'flex'; refreshDailyUI(); };
 
-  // Camera buttons (inside More)
-  var btnSurface = document.getElementById("btn-surface");
-  if (btnSurface) btnSurface.onclick = function() { flyToPreset("surface"); };
-  var btnTunnel = document.getElementById("btn-tunnel");
-  if (btnTunnel) btnTunnel.onclick = function() { flyToPreset("tunnel"); };
-  var btnOrbit = document.getElementById("btn-orbit");
-  if (btnOrbit) btnOrbit.onclick = function() { flyToPreset("orbit"); };
+  var btnSurface = document.getElementById("btn-surface"); if (btnSurface) btnSurface.onclick = function() { flyToPreset("surface"); };
+  var btnTunnel = document.getElementById("btn-tunnel"); if (btnTunnel) btnTunnel.onclick = function() { flyToPreset("tunnel"); };
+  var btnOrbit = document.getElementById("btn-orbit"); if (btnOrbit) btnOrbit.onclick = function() { flyToPreset("orbit"); };
 
-  // Zone pill
-  var zonePill = document.getElementById("zone-pill");
-  if (zonePill) zonePill.onclick = function() {
-    AudioManager.sfx.buttonClick();
-    var zones = state.unlockedZonesList;
-    if (zones.length <= 1) { showToast("Explore more to unlock new zones!"); return; }
-    var idx = zones.indexOf(state.currentZone);
-    var nextIdx = (idx + 1) % zones.length;
-    switchZone(zones[nextIdx]);
-  };
-  // Menu button
-  var btnMenu = document.getElementById("btn-menu-ingame");
-  if (btnMenu) btnMenu.onclick = function() { AudioManager.sfx.buttonClick(); showMainMenu(); };
+  var zonePill = document.getElementById("zone-pill"); if (zonePill) zonePill.onclick = function() { AudioManager.sfx.buttonClick(); var zones = state.unlockedZonesList; if (zones.length <= 1) { showToast("Explore more to unlock new zones!"); return; } var idx = zones.indexOf(state.currentZone); var nextIdx = (idx + 1) % zones.length; switchZone(zones[nextIdx]); };
+  var btnMenu = document.getElementById("btn-menu-ingame"); if (btnMenu) btnMenu.onclick = function() { AudioManager.sfx.buttonClick(); showMainMenu(); };
 
-  // Build chamber buttons (changed to enqueue)
-  var bfs = document.getElementById("build-food-storage");
-  if (bfs) bfs.onclick = function() { enqueueBuild("foodStorage"); };
-  var bn = document.getElementById("build-nursery");
-  if (bn) bn.onclick = function() { enqueueBuild("nursery"); };
-  var bs = document.getElementById("build-soldier");
-  if (bs) bs.onclick = function() { enqueueBuild("soldier"); };
-  var br = document.getElementById("build-research");
-  if (br) br.onclick = function() { enqueueBuild("research"); };
-  var bsc = document.getElementById("build-scout");
-  if (bsc) bsc.onclick = function() { enqueueBuild("scout"); };
+  var bfs = document.getElementById("build-food-storage"); if (bfs) bfs.onclick = function() { enqueueBuild("foodStorage"); };
+  var bn = document.getElementById("build-nursery"); if (bn) bn.onclick = function() { enqueueBuild("nursery"); };
+  var bs = document.getElementById("build-soldier"); if (bs) bs.onclick = function() { enqueueBuild("soldier"); };
+  var br = document.getElementById("build-research"); if (br) br.onclick = function() { enqueueBuild("research"); };
+  var bsc = document.getElementById("build-scout"); if (bsc) bsc.onclick = function() { enqueueBuild("scout"); };
+  var broyal = document.getElementById("build-royal"); if (broyal) broyal.onclick = function() { enqueueBuild("royal"); };
 
-  // Upgrade buy buttons
-  var btnUpgDmg = document.getElementById("btn-upg-damage");
-  if (btnUpgDmg) btnUpgDmg.onclick = function() { buyUpgrade("soldierDamage"); };
-  var btnUpgSpd = document.getElementById("btn-upg-speed");
-  if (btnUpgSpd) btnUpgSpd.onclick = function() { buyUpgrade("workerSpeed"); };
-  var btnUpgEgg = document.getElementById("btn-upg-egg");
-  if (btnUpgEgg) btnUpgEgg.onclick = function() { buyUpgrade("eggLayTime"); };
-  var btnUpgCap = document.getElementById("btn-upg-cap");
-  if (btnUpgCap) btnUpgCap.onclick = function() { buyUpgrade("foodCap"); };
+  var btnUpgDmg = document.getElementById("btn-upg-damage"); if (btnUpgDmg) btnUpgDmg.onclick = function() { buyUpgrade("soldierDamage"); };
+  var btnUpgSpd = document.getElementById("btn-upg-speed"); if (btnUpgSpd) btnUpgSpd.onclick = function() { buyUpgrade("workerSpeed"); };
+  var btnUpgEgg = document.getElementById("btn-upg-egg"); if (btnUpgEgg) btnUpgEgg.onclick = function() { buyUpgrade("eggLayTime"); };
+  var btnUpgCap = document.getElementById("btn-upg-cap"); if (btnUpgCap) btnUpgCap.onclick = function() { buyUpgrade("foodCap"); };
 
-  // Gem shop buttons (all new IDs, safe loop)
   var allShopIds = Object.keys(GEM_ITEMS);
-  for (var i = 0; i < allShopIds.length; i++) {
-    var id = allShopIds[i];
-    var btn = document.getElementById("btn-shop-" + id);
-    if (btn) {
-      btn.onclick = (function(itemId) {
-        return function() { buyGemItem(itemId); };
-      })(id);
-    }
-  }
+  for (var i = 0; i < allShopIds.length; i++) { var id = allShopIds[i]; var btn = document.getElementById("btn-shop-" + id); if (btn) { btn.onclick = (function(itemId) { return function() { buyGemItem(itemId); }; })(id); } }
 
-  // Settings, stats, roadmap, howtoplay, about (unchanged, with safety)
-  var btnSettings = document.getElementById("btn-settings-menu");
-  if (btnSettings) btnSettings.onclick = function() { AudioManager.sfx.buttonClick(); var sp = document.getElementById('settings-panel'); if (sp) sp.style.display = 'flex'; };
-  var btnStats = document.getElementById("btn-stats-menu");
-  if (btnStats) btnStats.onclick = function() { AudioManager.sfx.buttonClick(); var sp = document.getElementById('stats-panel'); if (sp) sp.style.display = 'flex'; refreshStatsUI(); };
-  var btnRoadmap = document.getElementById("btn-roadmap-menu");
-  if (btnRoadmap) btnRoadmap.onclick = function() { AudioManager.sfx.buttonClick(); var sp = document.getElementById('roadmap-panel'); if (sp) sp.style.display = 'flex'; refreshRoadmapUI(); };
-  var btnHowto = document.getElementById("btn-howtoplay-menu");
-  if (btnHowto) btnHowto.onclick = function() { AudioManager.sfx.buttonClick(); var sp = document.getElementById('howtoplay-panel'); if (sp) sp.style.display = 'flex'; };
-
-  var btnCloseSettings = document.getElementById("btn-close-settings");
-  if (btnCloseSettings) btnCloseSettings.onclick = function() { var sp = document.getElementById('settings-panel'); if (sp) sp.style.display = 'none'; };
-  var btnCloseStats = document.getElementById("btn-close-stats");
-  if (btnCloseStats) btnCloseStats.onclick = function() { var sp = document.getElementById('stats-panel'); if (sp) sp.style.display = 'none'; };
-  var btnCloseDaily = document.getElementById("btn-close-daily");
-  if (btnCloseDaily) btnCloseDaily.onclick = function() { var sp = document.getElementById('daily-panel'); if (sp) sp.style.display = 'none'; };
-  var btnCloseRoadmap = document.getElementById("btn-close-roadmap");
-  if (btnCloseRoadmap) btnCloseRoadmap.onclick = function() { var sp = document.getElementById('roadmap-panel'); if (sp) sp.style.display = 'none'; };
-  var btnCloseAsc = document.getElementById("btn-close-ascension");
-  if (btnCloseAsc) btnCloseAsc.onclick = function() { var sp = document.getElementById('ascension-panel'); if (sp) sp.style.display = 'none'; };
-  var btnCloseHowto = document.getElementById("btn-close-howtoplay");
-  if (btnCloseHowto) btnCloseHowto.onclick = function() { var sp = document.getElementById('howtoplay-panel'); if (sp) sp.style.display = 'none'; };
-  var btnCloseAbout = document.getElementById("btn-close-about");
-  if (btnCloseAbout) btnCloseAbout.onclick = function() { var sp = document.getElementById('about-modal'); if (sp) sp.style.display = 'none'; };
-
-  var toggleSfx = document.getElementById("toggle-sfx");
-  if (toggleSfx) toggleSfx.onclick = function() { GameSettings.sfxOn = !GameSettings.sfxOn; AudioManager.setSfx(GameSettings.sfxOn); this.className = 'toggle-switch' + (GameSettings.sfxOn ? ' on' : ''); };
-  var toggleAmb = document.getElementById("toggle-ambient");
-  if (toggleAmb) toggleAmb.onclick = function() { GameSettings.ambientOn = !GameSettings.ambientOn; AudioManager.setAmbient(GameSettings.ambientOn); this.className = 'toggle-switch' + (GameSettings.ambientOn ? ' on' : ''); };
-  var toggleMus = document.getElementById("toggle-music");
-  if (toggleMus) toggleMus.onclick = function() { GameSettings.musicOn = !GameSettings.musicOn; AudioManager.setMusic(GameSettings.musicOn); this.className = 'toggle-switch' + (GameSettings.musicOn ? ' on' : ''); };
-  var toggleShk = document.getElementById("toggle-shake");
-  if (toggleShk) toggleShk.onclick = function() { GameSettings.shakeOn = !GameSettings.shakeOn; localStorage.setItem('antEmpire_shake', GameSettings.shakeOn ? '1' : '0'); this.className = 'toggle-switch' + (GameSettings.shakeOn ? ' on' : ''); };
-
-  // Show/hide buttons based on game state
   updateBuildButtons();
-  var btnEvo2 = document.getElementById("btn-evolution");
-  if (btnEvo2) btnEvo2.style.display = (state.level >= BAL.evolutionUnlockLevel) ? "inline-block" : "none";
-  var btnPP2 = document.getElementById("btn-prestige-shop");
-  if (btnPP2) btnPP2.style.display = (state.prestigeCount > 0) ? "inline-block" : "none";
-  var btnAsc2 = document.getElementById("btn-ascension-shop");
-  if (btnAsc2) btnAsc2.style.display = (state.prestigeCount >= BAL.ascendUnlockPrestige || state.ascensionCount > 0) ? "inline-block" : "none";
-  var btnSurf = document.getElementById("btn-surface");
-  if (btnSurf) btnSurf.style.display = "inline-block";
-  var btnTun = document.getElementById("btn-tunnel");
-  if (btnTun) btnTun.style.display = "inline-block";
-  var btnOrb = document.getElementById("btn-orbit");
-  if (btnOrb) btnOrb.style.display = "inline-block";
+  var btnEvo2 = document.getElementById("btn-evolution"); if (btnEvo2) btnEvo2.style.display = (state.level >= BAL.evolutionUnlockLevel) ? "inline-block" : "none";
+  var btnPP2 = document.getElementById("btn-prestige-shop"); if (btnPP2) btnPP2.style.display = (state.prestigeCount > 0) ? "inline-block" : "none";
+  var btnAsc2 = document.getElementById("btn-ascension-shop"); if (btnAsc2) btnAsc2.style.display = (state.prestigeCount >= BAL.ascendUnlockPrestige || state.ascensionCount > 0) ? "inline-block" : "none";
+  var btnResearch2 = document.getElementById("btn-research"); if (btnResearch2) btnResearch2.style.display = (state.chambers.research.count > 0) ? "inline-block" : "none";
+  var btnSurf = document.getElementById("btn-surface"); if (btnSurf) btnSurf.style.display = "inline-block";
+  var btnTun = document.getElementById("btn-tunnel"); if (btnTun) btnTun.style.display = "inline-block";
+  var btnOrb = document.getElementById("btn-orbit"); if (btnOrb) btnOrb.style.display = "inline-block";
 
-  // Disable owned shop buttons
-  for (var i = 0; i < allShopIds.length; i++) {
-    var id = allShopIds[i];
-    if (GEM_ITEMS[id].oneTime && state.gemUpgrades[id]) {
-      var btn = document.getElementById("btn-shop-" + id);
-      if (btn) { btn.disabled = true; btn.textContent = "Owned"; }
-    }
-  }
+  for (var i = 0; i < allShopIds.length; i++) { var id = allShopIds[i]; if (GEM_ITEMS[id].oneTime && state.gemUpgrades[id]) { var btn = document.getElementById("btn-shop-" + id); if (btn) { btn.disabled = true; btn.textContent = "Owned"; } } }
   refreshUpgradeUI(); refreshAscensionShopUI();
-}
+  }
