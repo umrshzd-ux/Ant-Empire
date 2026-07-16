@@ -1,5 +1,8 @@
 // ===== COMBAT RESOLUTION, BOSS SYSTEM =====
 
+var BOSS_FIGHT_TIMEOUT = 45;               // seconds of active melee before we force a result
+var BOSS_MILESTONES = [0.75, 0.5, 0.25];   // health-ratio callouts
+
 function combatUpdate(dt) {
   var cdt = Math.min(dt, 0.2);
   var guardRadius = getEffectiveGuardRadius();
@@ -77,6 +80,18 @@ function getBossTypeForZone() {
   return available[Math.floor(Math.random() * available.length)];
 }
 
+function checkBossMilestones(boss) {
+  var ratio = boss.health / boss.maxHealth;
+  state._bossMilestonesHit = state._bossMilestonesHit || {};
+  for (var i = 0; i < BOSS_MILESTONES.length; i++) {
+    var m = BOSS_MILESTONES[i];
+    if (ratio <= m && !state._bossMilestonesHit[m]) {
+      state._bossMilestonesHit[m] = true;
+      showToast("⚔️ " + BOSS_TYPES[boss.bossKey].name + " down to " + Math.round(ratio * 100) + "%!");
+    }
+  }
+}
+
 var _bossSpawning = false;
 
 function spawnBoss() {
@@ -96,6 +111,8 @@ function spawnBoss() {
       state.bossMaxHealth = bossHealth;
       state.bossHealth = bossHealth;
       state._bossRetreatTimer = 0;
+      state.bossFightTimer = 0;
+      state._bossMilestonesHit = {};
 
       var bossMesh = new THREE.Group();
       var bodyMat = new THREE.MeshStandardMaterial({ color: bt.color, roughness: 0.2, metalness: 0.4 });
@@ -144,12 +161,11 @@ function spawnBoss() {
         maxHealth: bossHealth,
         healthBar: hb,
         speed: BAL[bt.spdKey],
-        target: ER.clone(),  // always target nest entrance
+        target: ER.clone(),
         attackCooldown: 0,
         lastAttack: 0,
         bossKey: bossKey,
-        special: bt.special || null,
-        _stuckTimer: 0
+        special: bt.special || null
       };
       var bossNameEl = document.getElementById('boss-name');
       if (bossNameEl) {
@@ -177,12 +193,21 @@ function updateBoss(dt) {
   var bt = BOSS_TYPES[boss.bossKey];
   if (!bt) {
     console.error("Unknown boss type:", boss.bossKey);
-    killBoss();
+    resolveBossFight("timeout");
     return;
   }
   state.bossHealth = boss.health;
   var hbFill = document.getElementById('boss-health-fill');
   if (hbFill) hbFill.style.width = Math.max(0, (boss.health / boss.maxHealth) * 100) + "%";
+
+  // Fight only "counts" toward the timeout while soldiers are actually engaged
+  if (soldiers.length > 0) {
+    state.bossFightTimer = (state.bossFightTimer || 0) + dt;
+    if (state.bossFightTimer > BOSS_FIGHT_TIMEOUT) {
+      resolveBossFight("timeout");
+      return;
+    }
+  }
 
   // Boss retreat logic if no soldiers
   if (soldiers.length === 0) {
@@ -201,8 +226,7 @@ function updateBoss(dt) {
         }
       }
       if (state._bossRetreatTimer > 30) {
-        killBoss();
-        showToast("💀 Boss left the colony!");
+        resolveBossFight("timeout"); // unopposed raid ends
         return;
       }
     } else {
@@ -210,22 +234,6 @@ function updateBoss(dt) {
     }
   }
 
-  // Push boss away from nest entrance if stuck
-  var distToNest = boss.mesh.position.distanceTo(ER);
-  if (distToNest < 1.8) {
-    boss._stuckTimer = (boss._stuckTimer || 0) + dt;
-    if (boss._stuckTimer > 2.0) {
-      var pushDir = new THREE.Vector3().subVectors(boss.mesh.position, ER).normalize();
-      if (pushDir.length() < 0.01) pushDir.set(1, 0, 0);
-      boss.mesh.position.x += pushDir.x * dt * 1.0;
-      boss.mesh.position.z += pushDir.z * dt * 1.0;
-      boss._stuckTimer = 0;
-    }
-  } else {
-    boss._stuckTimer = 0;
-  }
-
-  // Boss movement toward target
   var p = boss.mesh.position;
   var dx = boss.target.x - p.x, dy = boss.target.y - p.y, dz = boss.target.z - p.z;
   var dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
@@ -237,9 +245,10 @@ function updateBoss(dt) {
     boss.mesh.rotation.y = Math.atan2(dx, dz);
   }
 
-  // Boss attacks soldiers
   var now = performance.now() / 1000;
   if (boss.attackCooldown > 0) boss.attackCooldown -= dt;
+
+  // Boss attacks soldiers
   if (boss.attackCooldown <= 0 && soldiers.length > 0) {
     for (var i = 0; i < soldiers.length; i++) {
       if (soldiers[i].mesh.position.distanceTo(p) < 2.5) {
@@ -262,6 +271,8 @@ function updateBoss(dt) {
     }
   }
 
+  if (!state.bossActive) return; // fight may have ended during soldierDied
+
   // Soldiers attack boss
   for (var i = 0; i < soldiers.length; i++) {
     var s = soldiers[i];
@@ -275,7 +286,8 @@ function updateBoss(dt) {
       spawnDamageNumber(sdmg, p, "#ffaa00");
       s.attackCooldown = BAL.soldierAttackCD;
       s.lastCombatTime = now;
-      if (boss.health <= 0) killBoss();
+      checkBossMilestones(boss);
+      if (boss.health <= 0) { resolveBossFight("victory"); return; }
     }
   }
 
@@ -285,42 +297,68 @@ function updateBoss(dt) {
   }
 }
 
-function killBoss() {
+function resolveBossFight(outcome) {
   var boss = state.currentBoss;
   if (!boss) return;
   var bossKey = boss.bossKey;
-  if (boss.mesh) {
-    disposeMesh(boss.mesh);
-    scene.remove(boss.mesh);
-  }
+  var bt = BOSS_TYPES[bossKey];
+  var bossPos = boss.mesh ? boss.mesh.position.clone() : ER.clone();
+
+  if (boss.mesh) { disposeMesh(boss.mesh); scene.remove(boss.mesh); }
   state.bossActive = false;
   state.currentBoss = null;
-  state.bossKills++;
-  state.lifetimeStats.totalBossKills++;
-  if (bossKey === "beetle") state.beetleKills++;
-  if (bossKey === "wasp") state.waspKills++;
-  if (bossKey === "centipede") state.caveBossKills++;
-  if (bossKey === "hydra") state.swampBossKills++;
-  if (bossKey === "wyrm") state.mountainBossKills++;
-  if (!state.bossKillsByType) state.bossKillsByType = {};
-  state.bossKillsByType[bossKey] = (state.bossKillsByType[bossKey] || 0) + 1;
-  var cfg = getCurrentZoneConfig();
-  var foodReward = BAL.bossRewardFood + cfg.foodBonus * 10;
-  var gemReward = BAL.bossRewardGems + (bossKey === "wasp" ? 2 : 0);
-  if (state.ascensionUpgrades.monarchMight > 0) { foodReward *= 2; gemReward *= 2; }
-  if (boss.mesh) {
-    addFood(foodReward, boss.mesh.position);
-    emitParticles(boss.mesh.position, 15, bossKey === "wasp" ? 0xffff00 : (bossKey === "centipede" ? 0x886644 : 0xff4444), 0.08, 2.0, 0.8);
-  }
-  addGems(gemReward);
+  state.bossFightTimer = 0;
+  state._bossMilestonesHit = {};
+
   var bossNameEl = document.getElementById('boss-name');
   if (bossNameEl) bossNameEl.style.display = "none";
   var bossBar = document.getElementById('boss-health-bar');
   if (bossBar) bossBar.style.display = "none";
-  state.bossTimer = BAL.bossIntervalMin + Math.random() * (BAL.bossIntervalMax - BAL.bossIntervalMin);
-  AudioManager.sfx.bossDefeat();
-  updateDailyProgress('boss1', 1);
-  showToast("💀 " + BOSS_TYPES[bossKey].name + " defeated! +" + foodReward + " food, +" + gemReward + " gems");
+
+  if (outcome === "victory") {
+    state.bossKills++;
+    state.lifetimeStats.totalBossKills++;
+    if (bossKey === "beetle") state.beetleKills++;
+    if (bossKey === "wasp") state.waspKills++;
+    if (bossKey === "centipede") state.caveBossKills++;
+    if (bossKey === "hydra") state.swampBossKills++;
+    if (bossKey === "wyrm") state.mountainBossKills++;
+    if (!state.bossKillsByType) state.bossKillsByType = {};
+    state.bossKillsByType[bossKey] = (state.bossKillsByType[bossKey] || 0) + 1;
+    var cfg = getCurrentZoneConfig();
+    var foodReward = BAL.bossRewardFood + cfg.foodBonus * 10;
+    var gemReward = BAL.bossRewardGems + (bossKey === "wasp" ? 2 : 0);
+    if (state.ascensionUpgrades.monarchMight > 0) { foodReward *= 2; gemReward *= 2; }
+    addFood(foodReward, bossPos);
+    addGems(gemReward);
+    emitParticles(bossPos, 15, bossKey === "wasp" ? 0xffff00 : (bossKey === "centipede" ? 0x886644 : 0xff4444), 0.08, 2.0, 0.8);
+    AudioManager.sfx.bossDefeat();
+    updateDailyProgress('boss1', 1);
+    showToast("🏆 " + bt.name + " defeated! +" + foodReward + " food, +" + gemReward + " gems");
+    triggerShake(2, 0.3);
+    state.bossTimer = BAL.bossIntervalMin + Math.random() * (BAL.bossIntervalMax - BAL.bossIntervalMin);
+
+  } else if (outcome === "defeat") {
+    var tier = BOSS_TIER[bossKey] || 1;
+    var penaltyPct = Math.min(
+      BOSS_DEFEAT_PENALTY_MAX,
+      BOSS_DEFEAT_PENALTY_BASE + (tier - 1) * BOSS_DEFEAT_PENALTY_STEP
+    );
+    var lost = Math.floor(state.food * penaltyPct);
+    state.food = Math.max(0, state.food - lost);
+    var respawnCut = 1 - (tier - 1) * 0.1;
+    state.bossTimer = Math.max(
+      BAL.soldierRespawnTime,
+      BAL.bossIntervalMin * respawnCut
+    );
+    showToast("💀 Your guard was overrun! " + bt.name + " raided the colony and fled with " + lost + " food (" + Math.round(penaltyPct * 100) + "%).");
+    triggerShake(3 + tier * 0.4, 0.4);
+
+  } else { // timeout
+    state.bossTimer = BAL.bossIntervalMin + Math.random() * (BAL.bossIntervalMax - BAL.bossIntervalMin);
+    showToast("🌫️ " + bt.name + " retreated after a long standoff.");
+  }
   checkAchievements();
-  triggerShake(2, 0.3);
 }
+
+function killBoss() { resolveBossFight("victory"); }
