@@ -247,11 +247,12 @@ function updateWorker(w, dt) {
   }
   if (w.avoidTimer > 0) { w.avoidTimer -= dt; return; }
 
-  // If the worker is close to the surface entrance or the underground nest, skip soldier avoidance
+  // WORKER SOLDIER AVOIDANCE – completely disabled near nest AND when returning home with food
   var distToEntrance = w.mesh.position.distanceTo(ER);
   var distToNest = w.mesh.position.distanceTo(NP);
-  var nearNest = distToEntrance < 2.5 || distToNest < 2.5;
-  if (!nearNest && avoidSoldiers(w)) return;
+  var isNearNest = (distToEntrance < 3.0 || distToNest < 3.0);
+  var isReturningHome = (w.state === "TO_NEST" || w.state === "CARRY_EGG");
+  if (!(isNearNest && isReturningHome) && avoidSoldiers(w)) return;
 
   if (w.birthTimer !== undefined && w.birthTimer > 0) {
     w.birthTimer -= dt;
@@ -384,8 +385,13 @@ function updateQueenIdle(dt) {
 }
 function avoidSoldiers(w) {
   if (w.isSoldier || w.isScout) return false;
-  // If worker is close to surface entrance or underground nest, allow passage
-  if (w.mesh.position.distanceTo(ER) < 2.5 || w.mesh.position.distanceTo(NP) < 2.5) return false;
+  // NEW: completely ignore soldiers if worker is near nest AND heading home
+  var distToEntrance = w.mesh.position.distanceTo(ER);
+  var distToNest = w.mesh.position.distanceTo(NP);
+  if ((distToEntrance < 3.0 || distToNest < 3.0) &&
+      (w.state === "TO_NEST" || w.state === "CARRY_EGG")) {
+    return false;
+  }
   for (var i = 0; i < soldiers.length; i++) {
     if (w.mesh && w.mesh.position.distanceTo(soldiers[i].mesh.position) < 0.7) {
       w.avoidTimer = 0.3;
@@ -417,7 +423,8 @@ function updateHealthBar(bar, ratio) {
 }
 function spawnSoldier(chX) {
   var mesh = buildAntMesh(1.8, 0x3a1a0a, 1.5);
-  mesh.position.copy(ER);
+  // Spawn soldier at its barracks underground, NOT at the nest entrance
+  mesh.position.set(chX, CCFY + 0.05, CZ);
   scene.add(mesh);
   mesh.userData.labelObj = addLabel(mesh, "🛡️ Soldier Lv" + (state.upgrades.soldierDamage + 1), 1.1);
   var hb = createHealthBar(mesh, 60, 8, 1.2);
@@ -426,7 +433,8 @@ function spawnSoldier(chX) {
     mesh: mesh, health: mh, maxHealth: mh, healthBar: hb,
     patrolIndex: 0, target: PATROL_POINTS[0].clone(), speed: 0.9 + Math.random() * 0.3,
     waitTimer: 0, isSoldier: true, attackCooldown: 0, lastCombatTime: 0,
-    guardMesh: null, chX: chX, freezeTimer: 0, damageMultiplier: 1
+    guardMesh: null, chX: chX, freezeTimer: 0, damageMultiplier: 1,
+    homeX: chX, homeY: CCFY + 0.05, homeZ: CZ  // home position (barracks)
   };
   var gm = buildAntMesh(1.5, 0x3a1a0a, 1.3);
   gm.position.set(chX, CCFY + 0.05, CZ);
@@ -474,6 +482,16 @@ function updateSoldier(s, dt) {
     updateHealthBar(s.healthBar, s.health / s.maxHealth);
   }
   if (s.waitTimer > 0) { s.waitTimer -= dt; return; }
+
+  // Soldier push: if standing too close to the nest entrance, gently push away
+  var distToEntrance = s.mesh.position.distanceTo(ER);
+  if (distToEntrance < 2.0 && (state.bossActive ? soldiers.length <= 3 : true)) {
+    var pushDir = new THREE.Vector3().subVectors(s.mesh.position, ER).normalize();
+    if (pushDir.length() < 0.01) pushDir.set(1, 0, 0);
+    s.mesh.position.x += pushDir.x * dt * 0.8;
+    s.mesh.position.z += pushDir.z * dt * 0.8;
+  }
+
   var ne = null, nd = 4.0;
   for (var i = 0; i < enemies.length; i++) {
     var d = s.mesh.position.distanceTo(enemies[i].mesh.position);
@@ -505,10 +523,12 @@ function updateSoldier(s, dt) {
       return;
     }
   }
-  var p = s.mesh.position;
-  var dx = s.target.x - p.x, dy = s.target.y - p.y, dz = s.target.z - p.z;
+
+  // Normal patrol – if no enemies, move toward patrol point
+  var tgt = s.target;
+  var dx = tgt.x - s.mesh.position.x, dy = tgt.y - s.mesh.position.y, dz = tgt.z - s.mesh.position.z;
   var dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-  if (dist < 0.3) {
+  if (dist < 0.5) {
     s.patrolIndex = (s.patrolIndex + 1) % PATROL_POINTS.length;
     s.waitTimer = Math.random() < 0.4 ? 1.5 + Math.random() * 3 : 0.2;
     s.target.copy(PATROL_POINTS[s.patrolIndex]);
@@ -520,8 +540,10 @@ function updateSoldier(s, dt) {
   while (ad < -Math.PI) ad += Math.PI * 2;
   s.mesh.rotation.y += ad * Math.min(1, dt * 3);
   var step = Math.min(s.speed * dt, dist);
-  p.x += (dx / dist) * step; p.y += (dy / dist) * step; p.z += (dz / dist) * step;
-  s.mesh.position.y += Math.sin(performance.now() / 150 + p.x * 3) * 0.004;
+  s.mesh.position.x += (dx / dist) * step;
+  s.mesh.position.y += (dy / dist) * step;
+  s.mesh.position.z += (dz / dist) * step;
+  s.mesh.position.y += Math.sin(performance.now() / 150 + s.mesh.position.x * 3) * 0.004;
 }
 
 var scouts = [];
@@ -679,4 +701,4 @@ function isBossNearby(w, range) {
   if (!state.bossActive || !state.currentBoss || !state.currentBoss.mesh) return false;
   if (!w.mesh) return false;
   return w.mesh.position.distanceTo(state.currentBoss.mesh.position) < range;
-                                                 }
+    }
