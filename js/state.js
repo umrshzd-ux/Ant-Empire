@@ -178,7 +178,9 @@ function resetStateToDefault(slot) {
   state.caveBossKills = 0; state.swampBossKills = 0; state.mountainBossKills = 0;
   state.hasAscended = false;
   queenScale = BAL.queenBaseScale;
-  if (!state.bossTimer || state.bossTimer <= 0) { state.bossTimer = BAL.bossIntervalMin + Math.random() * (BAL.bossIntervalMax - BAL.bossIntervalMin); }
+  if (!state.bossTimer || state.bossTimer <= 0) {
+    state.bossTimer = BAL.bossIntervalMin + Math.random() * (BAL.bossIntervalMax - BAL.bossIntervalMin);
+  }
   // Engagement reset
   state.buildQueue = [];
   state.prestigeGoal = null;
@@ -186,9 +188,14 @@ function resetStateToDefault(slot) {
   state.eventChoices = [];
   state.eventChoiceActive = false;
   // New systems reset
-  state.researchBonuses = { foodPerTrip: 0, soldierHealth: 0, soldierDamage: 0, discoveryChance: 0, zoneTripReduction: 0, eggLayReduction: 0, scoutSpeed: 0, poisonResist: false, queensWrathUnlocked: false, pheromoneShieldUnlocked: false };
+  state.researchBonuses = {
+    foodPerTrip: 0, soldierHealth: 0, soldierDamage: 0, discoveryChance: 0,
+    zoneTripReduction: 0, eggLayReduction: 0, scoutSpeed: 0,
+    poisonResist: false, queensWrathUnlocked: false, pheromoneShieldUnlocked: false
+  };
   state.completedResearch = [];
-  state.queensWrathActive = false; state.queensWrathTimer = 0;
+  state.queensWrathActive = false;
+  state.queensWrathTimer = 0;
   state.queenProtected = false;
   state._royalGroups = [];
   state.bossFightTimer = 0;
@@ -266,7 +273,9 @@ function getEffectiveWorkerSpeed() {
   if (state.speedBoostTimer > 0) base *= 2;
   if (state.ascensionUpgrades.goldenQueen > 0) base *= 2;
   var foodRatio = state.food / Math.max(1, state.foodCap);
-  if (foodRatio < BAL.foodLowThreshold) { base *= (BAL.foodTensionMaxSlowdown + (1 - BAL.foodTensionMaxSlowdown) * (foodRatio / BAL.foodLowThreshold)); }
+  if (foodRatio < BAL.foodLowThreshold) {
+    base *= (BAL.foodTensionMaxSlowdown + (1 - BAL.foodTensionMaxSlowdown) * (foodRatio / BAL.foodLowThreshold));
+  }
   return base;
 }
 function getEffectiveScoutSpeed() {
@@ -370,7 +379,9 @@ function loadGameData(data) {
   if (data.currentZone) state.currentZone = data.currentZone;
   if (data.unlockedZonesList) state.unlockedZonesList = data.unlockedZonesList;
   if (data.bossTimer !== undefined) state.bossTimer = data.bossTimer;
-  if (!state.bossTimer || state.bossTimer <= 0) { state.bossTimer = BAL.bossIntervalMin + Math.random() * (BAL.bossIntervalMax - BAL.bossIntervalMin); }
+  if (!state.bossTimer || state.bossTimer <= 0) {
+    state.bossTimer = BAL.bossIntervalMin + Math.random() * (BAL.bossIntervalMax - BAL.bossIntervalMin);
+  }
   if (data.tutorialsShown) state.tutorialsShown = data.tutorialsShown;
   if (data.lifetimeStats) state.lifetimeStats = data.lifetimeStats;
   if (data.dailyChallengeDate) state.dailyChallengeDate = data.dailyChallengeDate;
@@ -430,4 +441,4 @@ function addGems(amount) {
   state.totalGemsEarned += amount;
   state.lifetimeStats.totalGems = (state.lifetimeStats.totalGems || 0) + amount;
   showToast("+" + amount + "💎");
-             }
+  }
