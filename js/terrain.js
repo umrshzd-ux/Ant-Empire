@@ -19,11 +19,13 @@ function getStationSlotOffset(si) {
   var a = (si / SPS) * Math.PI * 2;
   return { x: Math.cos(a) * SRR, z: Math.sin(a) * SRR };
 }
+
+// Soldier patrol points – moved farther from nest entrance so they don't block workers
 var PATROL_POINTS = [
-  new THREE.Vector3(TX + 3, GTY, TCZ + 3),
-  new THREE.Vector3(TX + 3, GTY, TCZ - 3),
-  new THREE.Vector3(TX - 2, GTY, TCZ - 3),
-  new THREE.Vector3(TX - 2, GTY, TCZ + 3)
+  new THREE.Vector3(TX + 5, GTY, TCZ + 4),
+  new THREE.Vector3(TX + 5, GTY, TCZ - 4),
+  new THREE.Vector3(TX - 4, GTY, TCZ - 4),
+  new THREE.Vector3(TX - 4, GTY, TCZ + 4)
 ];
 
 var mound, rim, collar;
@@ -165,9 +167,8 @@ function buildTerrain() {
 }
 
 // ===== MUSHROOMS (reduced to 3, NO lights) =====
-var mushroomMeshes = [], mushroomLights = []; // lights kept as empty array for compatibility
+var mushroomMeshes = [], mushroomLights = [];
 function initMushrooms() {
-  // Only 3 mushrooms, no point lights
   for (var mi = 0; mi < 3; mi++) {
     var mx = -SW / 2 + 4 + Math.random() * (SW - 8);
     var mz = -SD / 2 + 4 + Math.random() * (SD - 8);
@@ -189,7 +190,6 @@ function createMushroom(x, z) {
   group.userData = { capMat: capMat };
   scene.add(group);
   mushroomMeshes.push(group);
-  // No light created – mushroomLights remains empty
 }
 
 // ===== RAIN DROPS (reduced to 80) =====
