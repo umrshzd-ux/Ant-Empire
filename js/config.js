@@ -16,9 +16,9 @@ var BAL = {
   maxNursery: 3, maxSoldierChambers: 5, maxScoutChambers: 3, soldierRowStart: 10, researchRowStart: 16, scoutRowStart: 22,
   spiderSneakChance: 0.1, spiderGuardRadius: 2.5, bossIntervalMin: 1500, bossIntervalMax: 2100,
   bossHealthQueen: 250, bossHealthBeetle: 400, bossHealthWasp: 150, bossDamageQueen: 15, bossDamageBeetle: 10, bossDamageWasp: 20,
-  bossSpeedQueen: 0.6,      // increased from 0.2
-  bossSpeedBeetle: 0.4,     // increased from 0.1
-  bossSpeedWasp: 0.8,       // increased from 0.4
+  bossSpeedQueen: 0.6,
+  bossSpeedBeetle: 0.4,
+  bossSpeedWasp: 0.8,
   bossRewardFood: 80, bossRewardGems: 5, summonCost: 5,
   prestigeLevelReq: 30, prestigePPPerLevel: 0.5, prestigeBasePP: 3, workerRebalanceInterval: 300,
   speedBoostDuration: 300, evolutionUnlockLevel: 8,
@@ -45,6 +45,18 @@ var BAL = {
   foodTensionMaxSlowdown: 0.5,
   foodTensionHatchBoost: 0.2
 };
+
+// Boss tier lookup for defeat penalties
+var BOSS_TIER = {
+  beetle:    1,
+  wasp:      2,
+  centipede: 3,
+  hydra:     4,
+  wyrm:      5
+};
+var BOSS_DEFEAT_PENALTY_BASE = 0.10;   // tier 1 takes 10%
+var BOSS_DEFEAT_PENALTY_STEP = 0.05;   // +5% per tier above 1
+var BOSS_DEFEAT_PENALTY_MAX  = 0.35;   // hard cap
 
 var UPGRADES = {
   soldierDamage: { name: "Soldier Might", baseCost: 120, maxLevel: 10, effect: 4, costMult: 1.8 },
