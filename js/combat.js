@@ -148,7 +148,8 @@ function spawnBoss() {
         attackCooldown: 0,
         lastAttack: 0,
         bossKey: bossKey,
-        special: bt.special || null
+        special: bt.special || null,
+        _stuckTimer: 0
       };
       var bossNameEl = document.getElementById('boss-name');
       if (bossNameEl) {
@@ -183,7 +184,7 @@ function updateBoss(dt) {
   var hbFill = document.getElementById('boss-health-fill');
   if (hbFill) hbFill.style.width = Math.max(0, (boss.health / boss.maxHealth) * 100) + "%";
 
-  // If no soldiers, boss may retreat after stealing
+  // Boss retreat logic if no soldiers
   if (soldiers.length === 0) {
     var dtn = boss.mesh.position.distanceTo(ER);
     if (dtn < 1.5) {
@@ -209,6 +210,22 @@ function updateBoss(dt) {
     }
   }
 
+  // Push boss away from nest entrance if stuck
+  var distToNest = boss.mesh.position.distanceTo(ER);
+  if (distToNest < 1.8) {
+    boss._stuckTimer = (boss._stuckTimer || 0) + dt;
+    if (boss._stuckTimer > 2.0) {
+      var pushDir = new THREE.Vector3().subVectors(boss.mesh.position, ER).normalize();
+      if (pushDir.length() < 0.01) pushDir.set(1, 0, 0);
+      boss.mesh.position.x += pushDir.x * dt * 1.0;
+      boss.mesh.position.z += pushDir.z * dt * 1.0;
+      boss._stuckTimer = 0;
+    }
+  } else {
+    boss._stuckTimer = 0;
+  }
+
+  // Boss movement toward target
   var p = boss.mesh.position;
   var dx = boss.target.x - p.x, dy = boss.target.y - p.y, dz = boss.target.z - p.z;
   var dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
@@ -219,9 +236,11 @@ function updateBoss(dt) {
     p.z += (dz / dist) * step;
     boss.mesh.rotation.y = Math.atan2(dx, dz);
   }
+
+  // Boss attacks soldiers
   var now = performance.now() / 1000;
   if (boss.attackCooldown > 0) boss.attackCooldown -= dt;
-  if (boss.attackCooldown <= 0 && dist < 2.5 && soldiers.length > 0) {
+  if (boss.attackCooldown <= 0 && soldiers.length > 0) {
     for (var i = 0; i < soldiers.length; i++) {
       if (soldiers[i].mesh.position.distanceTo(p) < 2.5) {
         var dmg = BAL[bt.dmgKey];
@@ -242,6 +261,8 @@ function updateBoss(dt) {
       }
     }
   }
+
+  // Soldiers attack boss
   for (var i = 0; i < soldiers.length; i++) {
     var s = soldiers[i];
     if (s.freezeTimer && s.freezeTimer > 0) { s.freezeTimer -= dt; continue; }
@@ -257,6 +278,7 @@ function updateBoss(dt) {
       if (boss.health <= 0) killBoss();
     }
   }
+
   if (boss.special === "regen" && boss.health < boss.maxHealth) {
     boss.health += boss.maxHealth * 0.05 * dt;
     if (boss.health > boss.maxHealth) boss.health = boss.maxHealth;
@@ -301,4 +323,4 @@ function killBoss() {
   showToast("💀 " + BOSS_TYPES[bossKey].name + " defeated! +" + foodReward + " food, +" + gemReward + " gems");
   checkAchievements();
   triggerShake(2, 0.3);
-                        }
+}
