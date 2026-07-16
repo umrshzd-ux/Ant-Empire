@@ -79,6 +79,7 @@ function addLabel(parent, text, yOff) {
   l.sprite.position.set(0, yOff, 0);
   l.sprite.scale.set(1.0, 0.25, 1);
   parent.add(l.sprite);
+  l.sprite.userData = { isLabel: true };  // mark as label for visibility control
   return l;
 }
 
@@ -227,7 +228,7 @@ function updateWorker(w, dt) {
     w.mesh.userData.headMesh.rotation.z = Math.sin(w.mesh.userData.idleTime * 3) * 0.1;
   }
 
-  // Flee from spiders only (boss is ignored near nest, handled separately)
+  // Flee from spiders only
   if (isEnemyNearby(w, BAL.workerFleeRange)) {
     w.avoidTimer = 0.5;
     var nearestPos = null, nd = 999;
@@ -244,10 +245,9 @@ function updateWorker(w, dt) {
   }
   if (w.avoidTimer > 0) { w.avoidTimer -= dt; return; }
 
-  // Boss avoidance: only flee if boss is very close AND worker is not near nest
+  // Boss avoidance – only flee if boss is very close AND worker is not near nest
   var distToEntrance = w.mesh.position.distanceTo(ER);
-  var nearNest = distToEntrance < 3.0;
-  if (!nearNest && isBossNearby(w, BAL.workerFleeRange)) {
+  if (distToEntrance > 3.0 && isBossNearby(w, BAL.workerFleeRange * 2)) {
     w.avoidTimer = 0.5;
     if (state.bossActive && state.currentBoss && state.currentBoss.mesh) {
       var bdx = w.mesh.position.x - state.currentBoss.mesh.position.x;
@@ -259,11 +259,9 @@ function updateWorker(w, dt) {
     return;
   }
 
-  // Soldier avoidance
-  if (!avoidSoldiers(w)) {
-    // continue normal movement
-  } else {
-    return; // avoidSoldiers already set avoidTimer
+  // Soldier avoidance – completely ignored when near nest or carrying food home
+  if (!(distToEntrance < 3.0 && (w.state === "TO_NEST" || w.carrying))) {
+    if (avoidSoldiers(w)) return;
   }
 
   if (w.birthTimer !== undefined && w.birthTimer > 0) {
@@ -397,9 +395,8 @@ function updateQueenIdle(dt) {
 }
 function avoidSoldiers(w) {
   if (w.isSoldier || w.isScout) return false;
-  // Always allow passage when very close to nest entrance or carrying food back
-  var distToEntrance = w.mesh.position.distanceTo(ER);
-  if (distToEntrance < 2.5 && (w.state === "TO_NEST" || w.carrying)) return false;
+  // Allow passage if very close to nest entrance
+  if (w.mesh.position.distanceTo(ER) < 2.5) return false;
   for (var i = 0; i < soldiers.length; i++) {
     if (w.mesh && w.mesh.position.distanceTo(soldiers[i].mesh.position) < 0.7) {
       w.avoidTimer = 0.3;
@@ -431,7 +428,7 @@ function updateHealthBar(bar, ratio) {
 }
 function spawnSoldier(chX) {
   var mesh = buildAntMesh(1.8, 0x3a1a0a, 1.5);
-  // Spawn on the surface entrance so they never travel underground
+  // Spawn on surface entrance
   mesh.position.copy(ER);
   scene.add(mesh);
   mesh.userData.labelObj = addLabel(mesh, "🛡️ Soldier Lv" + (state.upgrades.soldierDamage + 1), 1.1);
@@ -443,9 +440,8 @@ function spawnSoldier(chX) {
     waitTimer: 0, isSoldier: true, attackCooldown: 0, lastCombatTime: 0,
     guardMesh: null, chX: chX, freezeTimer: 0, damageMultiplier: 1
   };
-  // Static guard mesh remains at the barracks
   var gm = buildAntMesh(1.5, 0x3a1a0a, 1.3);
-  gm.position.set(chX, CCFY + 0.05, CZ);
+  gm.position.set(chX, CCFY + 0.05, CZ);  // barracks guard stays underground
   gm.rotation.y = Math.PI / 2;
   scene.add(gm);
   soldier.guardMesh = gm;
@@ -522,10 +518,10 @@ function updateSoldier(s, dt) {
       return;
     }
   }
-  // Normal patrol – only on surface
+  // Patrol on surface only
   var tgt = s.target;
-  var dx = tgt.x - s.mesh.position.x, dy = tgt.y - s.mesh.position.y, dz = tgt.z - s.mesh.position.z;
-  var dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+  var dx = tgt.x - s.mesh.position.x, dz = tgt.z - s.mesh.position.z;
+  var dist = Math.sqrt(dx * dx + dz * dz);
   if (dist < 0.5) {
     s.patrolIndex = (s.patrolIndex + 1) % PATROL_POINTS.length;
     s.waitTimer = Math.random() < 0.4 ? 1.5 + Math.random() * 3 : 0.2;
@@ -539,8 +535,8 @@ function updateSoldier(s, dt) {
   s.mesh.rotation.y += ad * Math.min(1, dt * 3);
   var step = Math.min(s.speed * dt, dist);
   s.mesh.position.x += (dx / dist) * step;
-  s.mesh.position.y = GTY; // lock to surface
   s.mesh.position.z += (dz / dist) * step;
+  s.mesh.position.y = GTY; // lock to surface
 }
 
 var scouts = [];
@@ -667,7 +663,6 @@ function hatchEgg(egg, i) {
   state.lifetimeStats.totalHatched++;
   updateEggLayTime();
   var rt = null;
-  // Increased rare chance from 0.05 to 0.08
   if (Math.random() < 0.08) {
     rt = RARE_TYPES[Math.floor(Math.random() * RARE_TYPES.length)];
     state.rareAntCount++;
@@ -694,9 +689,9 @@ function hatchEgg(egg, i) {
   pTH();
 }
 
-// Boss detection – only used when worker is far from nest
+// Boss detection for workers
 function isBossNearby(w, range) {
   if (!state.bossActive || !state.currentBoss || !state.currentBoss.mesh) return false;
   if (!w.mesh) return false;
   return w.mesh.position.distanceTo(state.currentBoss.mesh.position) < range;
-    }
+}
