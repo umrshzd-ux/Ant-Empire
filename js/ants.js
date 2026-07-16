@@ -74,12 +74,13 @@ function setLabelText(lb, text) {
   ctx.fillText(text, 64, 20);
   lb.texture.needsUpdate = true;
 }
-function addLabel(parent, text, yOff) {
+// undergroundOnly param: if true, label only shows when camera is underground
+function addLabel(parent, text, yOff, undergroundOnly) {
   var l = createLabelSprite(text);
   l.sprite.position.set(0, yOff, 0);
   l.sprite.scale.set(1.0, 0.25, 1);
+  l.sprite.userData = { isLabel: true, undergroundOnly: !!undergroundOnly };
   parent.add(l.sprite);
-  l.sprite.userData = { isLabel: true };  // mark as label for visibility control
   return l;
 }
 
@@ -88,7 +89,7 @@ function initQueen() {
   qMesh = buildAntMesh(queenScale, 0x8a4a1a);
   qMesh.position.set(TX, NP.y, CZ);
   scene.add(qMesh);
-  addLabel(qMesh, "👑 Queen", 1.3);
+  addLabel(qMesh, "👑 Queen", 1.3, true);  // underground label
   qMesh.userData = { idleTime: 0, isQueen: true };
 }
 initQueen();
@@ -142,8 +143,8 @@ function createWorker(golden, rareType, forceRender) {
   else mesh = buildAntMesh(ws, 0x1c1410);
   mesh.position.copy(NP);
   scene.add(mesh);
-  if (rareType) addLabel(mesh, rareType.emoji + " " + rareType.name, 0.9);
-  else if (golden) addLabel(mesh, "🥇 Golden Worker", 0.9);
+  if (rareType) addLabel(mesh, rareType.emoji + " " + rareType.name, 0.9, false);
+  else if (golden) addLabel(mesh, "🥇 Golden Worker", 0.9, false);
   var baseSpeed = getEffectiveWorkerSpeed();
   var speedMult = 1;
   if (golden) speedMult = 2;
@@ -395,7 +396,6 @@ function updateQueenIdle(dt) {
 }
 function avoidSoldiers(w) {
   if (w.isSoldier || w.isScout) return false;
-  // Allow passage if very close to nest entrance
   if (w.mesh.position.distanceTo(ER) < 2.5) return false;
   for (var i = 0; i < soldiers.length; i++) {
     if (w.mesh && w.mesh.position.distanceTo(soldiers[i].mesh.position) < 0.7) {
@@ -428,10 +428,9 @@ function updateHealthBar(bar, ratio) {
 }
 function spawnSoldier(chX) {
   var mesh = buildAntMesh(1.8, 0x3a1a0a, 1.5);
-  // Spawn on surface entrance
   mesh.position.copy(ER);
   scene.add(mesh);
-  mesh.userData.labelObj = addLabel(mesh, "🛡️ Soldier Lv" + (state.upgrades.soldierDamage + 1), 1.1);
+  addLabel(mesh, "🛡️ Soldier Lv" + (state.upgrades.soldierDamage + 1), 1.1, false); // surface label
   var hb = createHealthBar(mesh, 60, 8, 1.2);
   var mh = getEffectiveSoldierMaxHealth();
   var soldier = {
@@ -441,7 +440,7 @@ function spawnSoldier(chX) {
     guardMesh: null, chX: chX, freezeTimer: 0, damageMultiplier: 1
   };
   var gm = buildAntMesh(1.5, 0x3a1a0a, 1.3);
-  gm.position.set(chX, CCFY + 0.05, CZ);  // barracks guard stays underground
+  gm.position.set(chX, CCFY + 0.05, CZ);
   gm.rotation.y = Math.PI / 2;
   scene.add(gm);
   soldier.guardMesh = gm;
@@ -518,7 +517,7 @@ function updateSoldier(s, dt) {
       return;
     }
   }
-  // Patrol on surface only
+  // Patrol on surface only – no push force
   var tgt = s.target;
   var dx = tgt.x - s.mesh.position.x, dz = tgt.z - s.mesh.position.z;
   var dist = Math.sqrt(dx * dx + dz * dz);
@@ -536,7 +535,7 @@ function updateSoldier(s, dt) {
   var step = Math.min(s.speed * dt, dist);
   s.mesh.position.x += (dx / dist) * step;
   s.mesh.position.z += (dz / dist) * step;
-  s.mesh.position.y = GTY; // lock to surface
+  s.mesh.position.y = GTY;
 }
 
 var scouts = [];
@@ -545,7 +544,7 @@ function spawnScout() {
   var mesh = buildAntMesh(SCOUT_SCALE, 0x8a7a4a, 1.0);
   mesh.position.copy(ER);
   scene.add(mesh);
-  addLabel(mesh, "🔍 Scout", 0.9);
+  addLabel(mesh, "🔍 Scout", 0.9, false); // surface label
   var scout = { mesh: mesh, state: "GOING", target: null, carryingResource: false };
   scouts.push(scout);
   return scout;
@@ -694,4 +693,4 @@ function isBossNearby(w, range) {
   if (!state.bossActive || !state.currentBoss || !state.currentBoss.mesh) return false;
   if (!w.mesh) return false;
   return w.mesh.position.distanceTo(state.currentBoss.mesh.position) < range;
-}
+                    }
