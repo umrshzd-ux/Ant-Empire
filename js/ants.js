@@ -74,7 +74,6 @@ function findEggCarrier() { for (var i = 0; i < workers.length; i++) { var w = w
 function createEggTransport() { if (state.chambers.nursery.count === 0) return false; var carrier = findEggCarrier(); if (!carrier) return false; carrier.carryingEgg = true; carrier.state = "CARRY_EGG"; var eggIcon = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), new THREE.MeshStandardMaterial({ color: 0xf5ecd6, roughness: 0.3, emissive: 0xffeecc, emissiveIntensity: 0.6 })); eggIcon.position.set(0, 0.7, 0); carrier.mesh.add(eggIcon); carrier.eggIcon = eggIcon; var nurseryX = TX - 5 - (state.chambers.nursery.count - 1) * 3.5; var nurseryPos = new THREE.Vector3(nurseryX, CCFY + 0.15, CZ); carrier.path = [NP, nurseryPos]; carrier.pathIndex = 0; carrier.waitTimer = 0; return true; }
 function applyWorkerSpeed(w) { var base = getEffectiveWorkerSpeed(); if (state.rallyActive) base *= BAL.rallySpeedMultiplier; if (w.isGolden) base *= 2; if (w.isRare && w.rareType) base *= (1 + w.rareType.speedBonus); w.speed = base + Math.random() * 0.4; }
 function applyAllWorkerSpeeds() { for (var i = 0; i < workers.length; i++) applyWorkerSpeed(workers[i]); }
-
 function updateWorker(w, dt) {
   if (!w.rendered || w.isSoldier || w.isScout || !w.mesh) return;
   if (w.carryingEgg) { updateEggCarrier(w, dt); return; }
@@ -101,7 +100,7 @@ function updateWorker(w, dt) {
   var step = Math.min(w.speed * dt, dist); p.x += (dx / dist) * step; p.y += (dy / dist) * step; p.z += (dz / dist) * step; w.mesh.rotation.y = Math.atan2(dx, dz); w.mesh.position.y += Math.sin(performance.now() / 90 + p.x * 5) * 0.008;
   if (w.carrying && !w.foodIcon) { var ic = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 6), new THREE.MeshStandardMaterial({ color: 0xffd27a, emissive: 0x553300, emissiveIntensity: 0.3 })); ic.position.set(0, 0.55, 0); w.mesh.add(ic); w.foodIcon = ic; }
   else if (!w.carrying && w.foodIcon && w.dropAnimTimer === undefined) { disposeMesh(w.foodIcon); w.mesh.remove(w.foodIcon); w.foodIcon = null; }
-    }
+}
 function updateEggCarrier(w, dt) {
   if (!w.carryingEgg || !w.mesh) return;
   var raw = w.path[w.pathIndex]; if (!raw) { w.carryingEgg = false; w.state = "TO_FOOD"; setPathTarget(w, "FOOD"); if (w.eggIcon) { disposeMesh(w.eggIcon); w.mesh.remove(w.eggIcon); w.eggIcon = null; } return; }
@@ -129,8 +128,7 @@ function updateSoldier(s, dt) {
   if (ne) { var p = s.mesh.position, e = ne.mesh.position; var dx = e.x - p.x, dy = e.y - p.y, dz = e.z - p.z; var dist = Math.sqrt(dx * dx + dy * dy + dz * dz); if (dist > 1.2) { var step = Math.min(s.speed * 1.2 * dt, dist); p.x += (dx / dist) * step; p.y += (dy / dist) * step; p.z += (dz / dist) * step; s.mesh.rotation.y = Math.atan2(dx, dz); } return; }
   var tgt = s.target; var dx = tgt.x - s.mesh.position.x, dz = tgt.z - s.mesh.position.z; var dist = Math.sqrt(dx * dx + dz * dz); if (dist < 0.5) { s.patrolIndex = (s.patrolIndex + 1) % PATROL_POINTS.length; s.waitTimer = Math.random() < 0.4 ? 1.5 + Math.random() * 3 : 0.2; s.target.copy(PATROL_POINTS[s.patrolIndex]); return; }
   var ta = Math.atan2(dx, dz); var ad = ta - s.mesh.rotation.y; while (ad > Math.PI) ad -= Math.PI * 2; while (ad < -Math.PI) ad += Math.PI * 2; s.mesh.rotation.y += ad * Math.min(1, dt * 3); var step = Math.min(s.speed * dt, dist); s.mesh.position.x += (dx / dist) * step; s.mesh.position.z += (dz / dist) * step; s.mesh.position.y = GTY;
-}
-
+    }
 var eggMs = [], hatchFx = [];
 function pTH() { var b = document.getElementById("btn-tunnel"); if (b) { b.classList.remove("hint-pulse"); void b.offsetWidth; b.classList.add("hint-pulse"); } }
 function layEgg() {
