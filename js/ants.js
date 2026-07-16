@@ -261,10 +261,10 @@ function updateWorker(w, dt) {
     return;
   }
 
-  // Soldier avoidance – ignored inside the safe corridor or when heading home with food
-  if (!(distToEntrance < NEST_SAFE_RADIUS && (w.state === "TO_NEST" || w.carrying))) {
-    if (avoidSoldiers(w)) return;
-  }
+  // Soldier avoidance – IGNORED when worker is inside NEST_SAFE_RADIUS
+  // Workers also ignore soldiers when carrying food home
+  var ignoreSoldiers = (distToEntrance < NEST_SAFE_RADIUS) || (w.state === "TO_NEST" && w.carrying);
+  if (!ignoreSoldiers && avoidSoldiers(w)) return;
 
   if (w.birthTimer !== undefined && w.birthTimer > 0) {
     w.birthTimer -= dt;
@@ -469,7 +469,7 @@ function soldierDied(soldier) {
   showToast("💀 Soldier fallen!");
 
   if (state.bossActive && soldiers.length === 0) {
-    resolveBossFight("defeat"); // guard wiped out — fight is over, boss wins
+    resolveBossFight("defeat");
   }
 }
 function respawnSoldier() {
@@ -492,19 +492,15 @@ function updateSoldier(s, dt) {
   }
   if (s.waitTimer > 0) { s.waitTimer -= dt; return; }
 
-  // Push away from nest entrance if stuck
+  // ===================================================================
+  // IMMEDIATE PUSH – if soldier is too close to nest entrance, push away
+  // ===================================================================
   var distToNest = s.mesh.position.distanceTo(ER);
-  if (distToNest < 1.8) {
-    s._stuckTimer = (s._stuckTimer || 0) + dt;
-    if (s._stuckTimer > 2.0) {
-      var pushDir = new THREE.Vector3().subVectors(s.mesh.position, ER).normalize();
-      if (pushDir.length() < 0.01) pushDir.set(1, 0, 0);
-      s.mesh.position.x += pushDir.x * dt * 0.8;
-      s.mesh.position.z += pushDir.z * dt * 0.8;
-      s._stuckTimer = 0;
-    }
-  } else {
-    s._stuckTimer = 0;
+  if (distToNest < 2.0) {
+    var pushDir = new THREE.Vector3().subVectors(s.mesh.position, ER).normalize();
+    if (pushDir.length() < 0.01) pushDir.set(1, 0, 0);
+    s.mesh.position.x += pushDir.x * 0.15; // immediate step away
+    s.mesh.position.z += pushDir.z * 0.15;
   }
 
   // AGGRESSIVE BOSS PURSUIT – overrides everything when boss is nearby
@@ -526,6 +522,7 @@ function updateSoldier(s, dt) {
     }
   }
 
+  // Normal enemy pursuit
   var ne = null, nd = 4.0;
   for (var i = 0; i < enemies.length; i++) {
     var d = s.mesh.position.distanceTo(enemies[i].mesh.position);
@@ -542,6 +539,7 @@ function updateSoldier(s, dt) {
     }
     return;
   }
+
   // Patrol on surface
   var tgt = s.target;
   var dx = tgt.x - s.mesh.position.x, dz = tgt.z - s.mesh.position.z;
@@ -718,4 +716,4 @@ function isBossNearby(w, range) {
   if (!state.bossActive || !state.currentBoss || !state.currentBoss.mesh) return false;
   if (!w.mesh) return false;
   return w.mesh.position.distanceTo(state.currentBoss.mesh.position) < range;
-    }
+}
