@@ -196,6 +196,9 @@ function updateQueenAbilityCooldowns(dt) {
 
 // ---- Create/update Queen ability buttons on HUD ----
 function updateQueenAbilityButtons() {
+  // Do NOT show if the game is paused (main menu, loading, etc.)
+  if (typeof gamePaused !== 'undefined' && gamePaused) return;
+
   var container = document.getElementById('queen-abilities');
   if (!state.chambers.royal || state.chambers.royal.count === 0) {
     if (container) container.style.display = 'none';
@@ -205,7 +208,7 @@ function updateQueenAbilityButtons() {
   if (!container) {
     container = document.createElement('div');
     container.id = 'queen-abilities';
-    container.style.cssText = 'position:fixed; top:110px; left:50%; transform:translateX(-50%); z-index:110; display:flex; gap:6px; pointer-events:auto;';
+    container.style.cssText = 'position:fixed; top:110px; left:50%; transform:translateX(-50%); z-index:110; display:none; gap:6px; pointer-events:auto;';
     document.body.appendChild(container);
   }
 
