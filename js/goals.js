@@ -106,25 +106,25 @@ function updateGoalsDisplay() {
 
   var container = document.getElementById('goals-panel');
   if (!container) {
-    // Create the goals panel if it doesn't exist
+    // Create the goals panel if it doesn't exist – now positioned top‑left, below the HUD pills
     container = document.createElement('div');
     container.id = 'goals-panel';
-    container.style.cssText = 'position:fixed; top:70px; left:50%; transform:translateX(-50%); z-index:100; display:none; gap:10px; pointer-events:none;';
+    container.style.cssText = 'position:fixed; top:65px; left:8px; z-index:100; display:none; flex-direction:column; gap:4px; pointer-events:none;';
     document.body.appendChild(container);
   }
 
   var goals = [
-    { label: '⚡ Now', goal: activeGoals.immediate, color: '#ffd27a' },
-    { label: '🎯 Soon', goal: activeGoals.medium, color: '#88ccff' },
-    { label: '👑 Future', goal: activeGoals.longTerm, color: '#ff88cc' }
+    { label: '⚡', goal: activeGoals.immediate, color: '#ffd27a' },
+    { label: '🎯', goal: activeGoals.medium, color: '#88ccff' },
+    { label: '👑', goal: activeGoals.longTerm, color: '#ff88cc' }
   ];
 
   var html = '';
   for (var i = 0; i < goals.length; i++) {
     var g = goals[i];
     if (g.goal) {
-      html += '<div style="display:inline-block; background:rgba(0,0,0,0.75); border:2px solid ' + g.color + '; border-radius:8px; padding:4px 10px; font-size:12px; color:#fff; max-width:180px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; pointer-events:auto;">' +
-              '<span style="color:' + g.color + '; font-weight:bold;">' + g.label + '</span> ' + g.goal.desc +
+      html += '<div style="display:flex; align-items:center; background:rgba(0,0,0,0.7); border-left:3px solid ' + g.color + '; border-radius:6px; padding:3px 8px; font-size:11px; color:#fff; max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; pointer-events:none;">' +
+              '<span style="color:' + g.color + '; font-weight:bold; margin-right:4px;">' + g.label + '</span> ' + g.goal.desc +
               '</div>';
     }
   }
