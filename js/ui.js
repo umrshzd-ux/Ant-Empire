@@ -1,5 +1,7 @@
 // ===== HUD, TOASTS, FLOATERS, MENUS, ACHIEVEMENTS, DAILY, STATS, PRESTIGE/ASCENSION UI =====
-
+var workers = typeof workers !== 'undefined' ? workers : [];
+var soldiers = typeof soldiers !== 'undefined' ? soldiers : [];
+var scouts = typeof scouts !== 'undefined' ? scouts : [];
 // Global element references
 var elFood, elFoodCap, elGems, elAnts, elAlertCount;
 var elAlertsPanel, elAlertsContent, elResourcesPanel;
