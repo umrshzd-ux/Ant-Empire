@@ -240,6 +240,8 @@ function refreshHUD() {
   if (typeof updateSummonButton === 'function') updateSummonButton();
   refreshBuildQueueUI();
   updateReactiveEventUI();
+  if (typeof updateGoalsDisplay === 'function') updateGoalsDisplay();
+  if (typeof updateQueenAbilityButtons === 'function') updateQueenAbilityButtons();
 }
 
 // =============================================
@@ -655,7 +657,7 @@ function performAscension(apGain) {
   state.lifetimeStats = { totalFood: 0, totalHatched: 0, totalKills: 0, totalBossKills: 0, totalPrestiges: 0, totalPlayTime: 0, totalGems: 0, totalRallies: 0, totalSurges: 0, totalNights: 0, fastestPrestige: 0 };
   state.ascensionCount = ascCount; state.ascensionPoints = ascPoints; state.ascensionUpgrades = ascUpgrades; state.hasAscended = true;
   state.caveBossKills = 0; state.swampBossKills = 0; state.mountainBossKills = 0; state.buildQueue = []; state.prestigeGoal = null; state.prestigeGoalSelected = false;
-  state.eventChoices = []; state.eventChoiceActive = false; state.researchBonuses = { foodPerTrip: 0, soldierHealth: 0, soldierDamage: 0, discoveryChance: 0, zoneTripReduction: 0, eggLayReduction: 0, scoutSpeed: 0, poisonResist: false, queensWrathUnlocked: false, pheromoneShieldUnlocked: false };
+  state.eventChoices = []; state.eventChoiceActive = false; state.researchBonuses = { foodPerTrip: 0, soldierHealth: 0, soldierDamage: 0, discoveryChance: 0, zoneTripReduction: 0, eggLayReduction: 0, scoutSpeed: 0, foodCap: 0, poisonResist: false, queensWrathUnlocked: false, pheromoneShieldUnlocked: false };
   state.completedResearch = []; state.queensWrathActive = false; state.queensWrathTimer = 0; state.queenProtected = false; state._royalGroups = [];
   clearAllMeshes(); buildQueenChamberWalls(); rebuildAllChambers();
   for (var wi = 0; wi < state.workerCount; wi++) { var nw = createWorker(false); if (nw) workers.push(nw); }
@@ -826,4 +828,4 @@ function setupButtons() {
 
   for (var i = 0; i < allShopIds.length; i++) { var id = allShopIds[i]; if (GEM_ITEMS[id].oneTime && state.gemUpgrades[id]) { var btn = document.getElementById("btn-shop-" + id); if (btn) { btn.disabled = true; btn.textContent = "Owned"; } } }
   refreshUpgradeUI(); refreshAscensionShopUI();
-  }
+        }
