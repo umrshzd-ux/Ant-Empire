@@ -193,10 +193,17 @@ var BIOME_DISCOVERIES = {
   mountain: ["crystalFormation", "gemShard", "bossLair", "treasureChamber", "ancientFossil"]
 };
 
-// ---- Get base discovery chance for current biome ----
+// ---- Get base discovery chance for current biome (merged with research bonuses) ----
 function getBiomeDiscoveryChance() {
-  // Can be overridden by research, etc.
+  // Start with biome-specific base chance
   var base = 0.15;
+  if (typeof BIOME_CONTENT !== 'undefined') {
+    var cfg = BIOME_CONTENT[state.currentZone];
+    if (cfg && cfg.discoveryChance !== undefined) {
+      base = cfg.discoveryChance;
+    }
+  }
+  // Add research bonuses
   if (state.researchBonuses && state.researchBonuses.discoveryChance) {
     base += state.researchBonuses.discoveryChance;
   }
