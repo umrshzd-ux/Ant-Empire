@@ -173,7 +173,8 @@ var BUILDINGS = {
   }
 };
 
-// ---- Build a chamber by type (called from build queue or direct button) ----
+// ---- Build a chamber by type (called from build queue) ----
+// Food was already deducted at enqueue time, so we only validate and create.
 function constructBuilding(type) {
   var bld = BUILDINGS[type];
   if (!bld) return false;
@@ -182,13 +183,7 @@ function constructBuilding(type) {
     return false;
   }
 
-  var cost = bld.getCost();
-  if (state.food < cost) {
-    showToast("Need " + cost + " food for " + bld.name + "!");
-    return false;
-  }
-
-  state.food -= cost;
+  // The cost was already paid when the item was queued – we do NOT deduct again.
 
   // Create the 3D chamber
   var x = bld.getNextX();
@@ -299,7 +294,9 @@ function enqueueBuild(type) {
     showToast("Need " + cost + " food!");
     return;
   }
+  // Deduct food NOW – it will not be deducted again when constructed.
   state.food -= cost;
+
   state.buildQueue.push({
     type: type,
     timeRemaining: (BAL.buildTimes && BAL.buildTimes[type]) ? BAL.buildTimes[type] : 5,
@@ -338,4 +335,4 @@ function getBuilderBuildSpeedBonus() {
     }
   }
   return 0;
-}
+    }
