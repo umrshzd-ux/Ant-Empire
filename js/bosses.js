@@ -19,73 +19,90 @@ var BOSS_DEFEAT_PENALTY_STEP = 0.05;
 var BOSS_DEFEAT_PENALTY_MAX  = 0.35;
 
 var _bossSpawning = false;
+var _firstBossSpawned = false; // for early warning
 
 // ---- Spawn a boss ----
 function spawnBoss() {
   if (_bossSpawning) return;
   _bossSpawning = true;
 
+  // Show early warning for first boss
+  if (!_firstBossSpawned) {
+    _firstBossSpawned = true;
+    showToast("💀 Something large approaches from the forest...");
+    // spawn after a short delay to give player time to prepare
+    setTimeout(function() {
+      _doSpawnBoss();
+      _bossSpawning = false;
+    }, 10000); // 10 second warning
+    return;
+  }
+
   setTimeout(function() {
     try {
-      if (state.bossActive) { _bossSpawning = false; return; }
-      state.bossActive = true;
-      var bossKey = getBossTypeForZone();
-      var bt = BOSS_TYPES[bossKey];
-      state.bossType = bossKey;
-      var cfg = getCurrentZoneConfig();
-      var hpMult = 1 + state.prestigeCount * 0.3;
-      var bossHealth = Math.floor(BAL[bt.hpKey] * hpMult * cfg.enemyMult);
-      state.bossMaxHealth = bossHealth;
-      state.bossHealth = bossHealth;
-      state._bossRetreatTimer = 0;
-      state.bossFightTimer = 0;
-      state._bossMilestonesHit = {};
-
-      // Build boss mesh
-      var bossMesh = buildBossMesh(bt);
-
-      var sx = SW / 2 - 5, sz = (Math.random() - 0.5) * (SD - 8);
-      bossMesh.position.set(sx, GTY + 0.5, sz);
-      scene.add(bossMesh);
-
-      var hb = typeof createHealthBar === 'function' ? createHealthBar(bossMesh, 120, 12, 1.8) : null;
-      var hbFill = document.getElementById('boss-health-fill');
-      if (hbFill) {
-        var colorMap = { beetle: "#888800", wasp: "#cccc00", centipede: "#886644", hydra: "#44aa44", wyrm: "#4488ff" };
-        hbFill.style.background = colorMap[bossKey] || "#cc0000";
-      }
-
-      state.currentBoss = {
-        mesh: bossMesh,
-        health: bossHealth,
-        maxHealth: bossHealth,
-        healthBar: hb,
-        speed: BAL[bt.spdKey],
-        target: ER.clone(),
-        attackCooldown: 0,
-        lastAttack: 0,
-        bossKey: bossKey,
-        special: bt.special || null
-      };
-
-      // Show boss UI
-      var bossNameEl = document.getElementById('boss-name');
-      if (bossNameEl) {
-        bossNameEl.textContent = bt.icon + " " + bt.name;
-        bossNameEl.style.display = "block";
-      }
-      var bossBar = document.getElementById('boss-health-bar');
-      if (bossBar) bossBar.style.display = "block";
-
-      AudioManager.sfx.bossSpawn();
-      triggerShake(6, 0.5);
-      showToast("💀 " + bt.name + " appeared!");
+      _doSpawnBoss();
     } catch (e) {
       console.error("spawnBoss error:", e);
       state.bossActive = false;
     }
     _bossSpawning = false;
   }, 10);
+}
+
+function _doSpawnBoss() {
+  if (state.bossActive) return;
+  state.bossActive = true;
+  var bossKey = getBossTypeForZone();
+  var bt = BOSS_TYPES[bossKey];
+  state.bossType = bossKey;
+  var cfg = getCurrentZoneConfig();
+  var hpMult = 1 + state.prestigeCount * 0.3;
+  var bossHealth = Math.floor(BAL[bt.hpKey] * hpMult * cfg.enemyMult);
+  state.bossMaxHealth = bossHealth;
+  state.bossHealth = bossHealth;
+  state._bossRetreatTimer = 0;
+  state.bossFightTimer = 0;
+  state._bossMilestonesHit = {};
+
+  // Build boss mesh
+  var bossMesh = buildBossMesh(bt);
+
+  var sx = SW / 2 - 5, sz = (Math.random() - 0.5) * (SD - 8);
+  bossMesh.position.set(sx, GTY + 0.5, sz);
+  scene.add(bossMesh);
+
+  var hb = typeof createHealthBar === 'function' ? createHealthBar(bossMesh, 120, 12, 1.8) : null;
+  var hbFill = document.getElementById('boss-health-fill');
+  if (hbFill) {
+    var colorMap = { beetle: "#888800", wasp: "#cccc00", centipede: "#886644", hydra: "#44aa44", wyrm: "#4488ff" };
+    hbFill.style.background = colorMap[bossKey] || "#cc0000";
+  }
+
+  state.currentBoss = {
+    mesh: bossMesh,
+    health: bossHealth,
+    maxHealth: bossHealth,
+    healthBar: hb,
+    speed: BAL[bt.spdKey],
+    target: ER.clone(),
+    attackCooldown: 0,
+    lastAttack: 0,
+    bossKey: bossKey,
+    special: bt.special || null
+  };
+
+  // Show boss UI
+  var bossNameEl = document.getElementById('boss-name');
+  if (bossNameEl) {
+    bossNameEl.textContent = bt.icon + " " + bt.name;
+    bossNameEl.style.display = "block";
+  }
+  var bossBar = document.getElementById('boss-health-bar');
+  if (bossBar) bossBar.style.display = "block";
+
+  AudioManager.sfx.bossSpawn();
+  triggerShake(6, 0.5);
+  showToast("💀 " + bt.name + " appeared!");
 }
 
 // ---- Build a boss 3D mesh ----
@@ -335,3 +352,8 @@ function summonBoss() {
   spawnBoss();
   showToast("💀 Boss summoned!");
 }
+
+// Reset first boss flag on prestige/ascension
+function resetFirstBossFlag() {
+  _firstBossSpawned = false;
+    }
