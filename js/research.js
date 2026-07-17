@@ -32,7 +32,7 @@ var RESEARCH_TREE = {
     effect: "Permanently increases food capacity by 100.",
     unlocks: [],
     onComplete: function() {
-      state.foodCap += 100;
+      state.researchBonuses.foodCap = (state.researchBonuses.foodCap || 0) + 100;
       recalculateFoodCap();
       showToast("📦 Deep Storage complete! +100 food capacity");
     },
@@ -50,7 +50,7 @@ var RESEARCH_TREE = {
     effect: "Unlocks the Builder ant class. Build times reduced by 25%.",
     unlocks: ["builderClass"],
     onComplete: function() {
-      unlockClass("builder");
+      if (typeof unlockClass === 'function') unlockClass("builder");
       showToast("🔨 Efficient Construction complete! Builder class unlocked");
     },
     prereq: "efficientGathering"
@@ -107,7 +107,7 @@ var RESEARCH_TREE = {
     unlocks: ["royalGuardClass"],
     onComplete: function() {
       state.researchBonuses.soldierDamage = (state.researchBonuses.soldierDamage || 0) + 5;
-      unlockClass("royalGuard");
+      if (typeof unlockClass === 'function') unlockClass("royalGuard");
       showToast("⚔️ Advanced Combat complete! Royal Guard class +5 damage");
     },
     prereq: "poisonResistance"
@@ -159,7 +159,7 @@ var RESEARCH_TREE = {
     effect: "Unlocks the Explorer class. Scout speed +30%.",
     unlocks: ["explorerClass"],
     onComplete: function() {
-      unlockClass("explorer");
+      if (typeof unlockClass === 'function') unlockClass("explorer");
       state.researchBonuses.scoutSpeed = (state.researchBonuses.scoutSpeed || 0) + 0.3;
       showToast("🏔️ Trailblazing complete! Explorer class +30% speed");
     },
@@ -222,7 +222,7 @@ var RESEARCH_TREE = {
   }
 };
 
-// ---- Research state ----
+// ---- Research state (ensure defaults exist) ----
 if (!state.researchBonuses) {
   state.researchBonuses = {
     foodPerTrip: 0,
@@ -232,6 +232,7 @@ if (!state.researchBonuses) {
     zoneTripReduction: 0,
     eggLayReduction: 0,
     scoutSpeed: 0,
+    foodCap: 0,
     poisonResist: false,
     queensWrathUnlocked: false,
     pheromoneShieldUnlocked: false
@@ -313,12 +314,12 @@ function refreshResearchUI() {
   if (!panel) return;
 
   var categories = ["economy", "military", "exploration", "queen"];
-  var html = '<div style="color:#ffd27a; font-weight:700; text-align:center;">🔬 Research Tree</div>';
+  var html = '<div style="color:#ffd27a; font-weight:700; text-align:center; margin-bottom:6px;">🔬 Research Tree</div>';
 
   for (var ci = 0; ci < categories.length; ci++) {
     var cat = categories[ci];
     var prog = getResearchProgress(cat);
-    html += '<div style="color:#ffcc88; font-weight:700; margin-top:8px;">' +
+    html += '<div style="color:#ffcc88; font-weight:700; margin-top:8px; border-bottom:1px solid #ffcc88; padding-bottom:2px;">' +
             cat.toUpperCase() + ' (' + prog.completed + '/' + prog.total + ')</div>';
 
     for (var id in RESEARCH_TREE) {
@@ -357,6 +358,7 @@ function initResearch() {
       zoneTripReduction: 0,
       eggLayReduction: 0,
       scoutSpeed: 0,
+      foodCap: 0,
       poisonResist: false,
       queensWrathUnlocked: false,
       pheromoneShieldUnlocked: false
@@ -365,4 +367,4 @@ function initResearch() {
   if (!state.completedResearch) {
     state.completedResearch = [];
   }
-    }
+        }
