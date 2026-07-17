@@ -1,6 +1,6 @@
 // ===== HUD, TOASTS, FLOATERS, MENUS, ACHIEVEMENTS, DAILY, STATS, PRESTIGE/ASCENSION UI =====
 
-// Global element references (will be filled after DOM is ready)
+// Global element references
 var elFood, elFoodCap, elGems, elAnts, elAlertCount;
 var elAlertsPanel, elAlertsContent, elResourcesPanel;
 var elMorePanel;
@@ -38,107 +38,8 @@ function initDOMRefs() {
   rallyOverlay = rallyBtn ? rallyBtn.querySelector(".cooldown-overlay") : null;
 }
 
-// ---- This function sets up all event listeners after the game is fully initialized ----
-function setupGameListeners() {
-  if (rallyBtn) rallyBtn.addEventListener("click", activateRally);
-
-  if (surgeBtn) {
-    surgeBtn.addEventListener("click", function() {
-      try {
-        if (!state.surgeActive) return;
-        state.surgeActive = false;
-        surgeBtn.style.display = "none";
-        state.surgesCollected++;
-        state.lifetimeStats.totalSurges++;
-        AudioManager.sfx.surge();
-        for (var i = 0; i < BAL.surgeEggs; i++) {
-          state.eggs++;
-          var em = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), new THREE.MeshStandardMaterial({ color: 0xf5ecd6, roughness: 0.4 }));
-          em.position.copy(qMesh.position);
-          em.position.x += (Math.random() - 0.5) * 1.6;
-          em.position.z += (Math.random() - 0.5) * 1.4;
-          em.scale.setScalar(0.3);
-          scene.add(em);
-          eggMs.push({ mesh: em, mat: em.material, hatchTimer: state.hatchTime, totalHatchTime: state.hatchTime, restX: em.position.x, restZ: em.position.z, settling: false, settleT: 0 });
-        }
-        showToast("👑 Surge! +" + BAL.surgeEggs + " eggs");
-        checkAchievements();
-      } catch (e) {
-        console.error("Surge error:", e);
-        showToast("❌ Surge collection failed.");
-      }
-    });
-  }
-  if (eventBtn) {
-    eventBtn.addEventListener("click", function() {
-      try {
-        if (!state.eventActive) return;
-        var idx = parseInt(eventBtn.dataset.idx);
-        if (idx >= 0 && idx < EVENTS.length) EVENTS[idx].action();
-        state.eventActive = false;
-        eventBtn.style.display = "none";
-        state.eventTimer = BAL.eventIntervalMin + Math.random() * (BAL.eventIntervalMax - BAL.eventIntervalMin);
-        showToast("✅ Event collected!");
-      } catch (e) {
-        console.error("Event error:", e);
-        showToast("❌ Event collection failed.");
-      }
-    });
-  }
-  if (summonBtn) {
-    summonBtn.addEventListener("click", function() {
-      try {
-        if (typeof summonBoss === 'function') summonBoss();
-      } catch (e) {
-        console.error("Summon error:", e);
-      }
-    });
-  }
-
-  // Close panels on outside click
-  document.addEventListener('click', function(e) {
-    if (!e.target.closest('#alerts-panel') && !e.target.closest('#alerts-pill')) {
-      if (elAlertsPanel) elAlertsPanel.style.display = 'none';
-    }
-    if (!e.target.closest('#resources-panel') && !e.target.closest('#resources-pill')) {
-      if (elResourcesPanel) elResourcesPanel.style.display = 'none';
-    }
-  });
-
-  // Close buttons inside panels
-  var alertsCloseBtn = document.getElementById('alerts-close-btn');
-  if (alertsCloseBtn) alertsCloseBtn.onclick = function() { if (elAlertsPanel) elAlertsPanel.style.display = 'none'; };
-  var resourcesCloseBtn = document.getElementById('resources-close-btn');
-  if (resourcesCloseBtn) resourcesCloseBtn.onclick = function() { if (elResourcesPanel) elResourcesPanel.style.display = 'none'; };
-
-  // Alerts pill
-  var alertsPill = document.getElementById("alerts-pill");
-  if (alertsPill) alertsPill.onclick = function() {
-    AudioManager.sfx.buttonClick();
-    if (elAlertsPanel && elResourcesPanel) {
-      if (elAlertsPanel.style.display === 'flex') { elAlertsPanel.style.display = 'none'; }
-      else { elResourcesPanel.style.display = 'none'; elAlertsPanel.style.display = 'flex'; updateAlertsPanel(); }
-    }
-  };
-
-  // Resources pill
-  var resourcesPill = document.getElementById("resources-pill");
-  if (resourcesPill) resourcesPill.onclick = function() {
-    AudioManager.sfx.buttonClick();
-    if (elResourcesPanel && elAlertsPanel) {
-      if (elResourcesPanel.style.display === 'flex') { elResourcesPanel.style.display = 'none'; }
-      else { elAlertsPanel.style.display = 'none'; elResourcesPanel.style.display = 'flex'; updateResourcesPopup(); }
-    }
-  };
-
-  // More panel toggle
-  var btnMore = document.getElementById("btn-more");
-  if (btnMore) btnMore.onclick = function() { AudioManager.sfx.buttonClick(); toggleMorePanel(); };
-}
-
 // =============================================
-//  HUD, ALERTS, TOASTS, AND ALL OTHER UI FUNCTIONS
-//  (everything else stays exactly the same as in the previous file)
+//  ALL UI FUNCTIONS (toasts, panels, modals, …)
 // =============================================
 
 function closeAllModals() {
@@ -841,4 +742,99 @@ function setupButtons() {
 
   for (var i = 0; i < allShopIds.length; i++) { var id = allShopIds[i]; if (GEM_ITEMS[id].oneTime && state.gemUpgrades[id]) { var btn = document.getElementById("btn-shop-" + id); if (btn) { btn.disabled = true; btn.textContent = "Owned"; } } }
   refreshUpgradeUI(); refreshAscensionShopUI();
-                                     }
+}
+
+// =============================================
+//  SETUP GAME LISTENERS – called from main.js after game is ready
+// =============================================
+function setupGameListeners() {
+  if (rallyBtn) rallyBtn.addEventListener("click", activateRally);
+
+  if (surgeBtn) {
+    surgeBtn.addEventListener("click", function() {
+      try {
+        if (!state.surgeActive) return;
+        state.surgeActive = false;
+        surgeBtn.style.display = "none";
+        state.surgesCollected++;
+        state.lifetimeStats.totalSurges++;
+        AudioManager.sfx.surge();
+        for (var i = 0; i < BAL.surgeEggs; i++) {
+          state.eggs++;
+          var em = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), new THREE.MeshStandardMaterial({ color: 0xf5ecd6, roughness: 0.4 }));
+          em.position.copy(qMesh.position);
+          em.position.x += (Math.random() - 0.5) * 1.6;
+          em.position.z += (Math.random() - 0.5) * 1.4;
+          em.scale.setScalar(0.3);
+          scene.add(em);
+          eggMs.push({ mesh: em, mat: em.material, hatchTimer: state.hatchTime, totalHatchTime: state.hatchTime, restX: em.position.x, restZ: em.position.z, settling: false, settleT: 0 });
+        }
+        showToast("👑 Surge! +" + BAL.surgeEggs + " eggs");
+        checkAchievements();
+      } catch (e) {
+        console.error("Surge error:", e);
+        showToast("❌ Surge collection failed.");
+      }
+    });
+  }
+  if (eventBtn) {
+    eventBtn.addEventListener("click", function() {
+      try {
+        if (!state.eventActive) return;
+        var idx = parseInt(eventBtn.dataset.idx);
+        if (idx >= 0 && idx < EVENTS.length) EVENTS[idx].action();
+        state.eventActive = false;
+        eventBtn.style.display = "none";
+        state.eventTimer = BAL.eventIntervalMin + Math.random() * (BAL.eventIntervalMax - BAL.eventIntervalMin);
+        showToast("✅ Event collected!");
+      } catch (e) {
+        console.error("Event error:", e);
+        showToast("❌ Event collection failed.");
+      }
+    });
+  }
+  if (summonBtn) {
+    summonBtn.addEventListener("click", function() {
+      try {
+        if (typeof summonBoss === 'function') summonBoss();
+      } catch (e) {
+        console.error("Summon error:", e);
+      }
+    });
+  }
+
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('#alerts-panel') && !e.target.closest('#alerts-pill')) {
+      if (elAlertsPanel) elAlertsPanel.style.display = 'none';
+    }
+    if (!e.target.closest('#resources-panel') && !e.target.closest('#resources-pill')) {
+      if (elResourcesPanel) elResourcesPanel.style.display = 'none';
+    }
+  });
+
+  var alertsCloseBtn = document.getElementById('alerts-close-btn');
+  if (alertsCloseBtn) alertsCloseBtn.onclick = function() { if (elAlertsPanel) elAlertsPanel.style.display = 'none'; };
+  var resourcesCloseBtn = document.getElementById('resources-close-btn');
+  if (resourcesCloseBtn) resourcesCloseBtn.onclick = function() { if (elResourcesPanel) elResourcesPanel.style.display = 'none'; };
+
+  var alertsPill = document.getElementById("alerts-pill");
+  if (alertsPill) alertsPill.onclick = function() {
+    AudioManager.sfx.buttonClick();
+    if (elAlertsPanel && elResourcesPanel) {
+      if (elAlertsPanel.style.display === 'flex') { elAlertsPanel.style.display = 'none'; }
+      else { elResourcesPanel.style.display = 'none'; elAlertsPanel.style.display = 'flex'; updateAlertsPanel(); }
+    }
+  };
+
+  var resourcesPill = document.getElementById("resources-pill");
+  if (resourcesPill) resourcesPill.onclick = function() {
+    AudioManager.sfx.buttonClick();
+    if (elResourcesPanel && elAlertsPanel) {
+      if (elResourcesPanel.style.display === 'flex') { elResourcesPanel.style.display = 'none'; }
+      else { elAlertsPanel.style.display = 'none'; elResourcesPanel.style.display = 'flex'; updateResourcesPopup(); }
+    }
+  };
+
+  var btnMore = document.getElementById("btn-more");
+  if (btnMore) btnMore.onclick = function() { AudioManager.sfx.buttonClick(); toggleMorePanel(); };
+      }
