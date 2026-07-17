@@ -50,6 +50,7 @@ function showMainMenu() {
   document.getElementById('bottom-bar').style.display = 'none';
   document.getElementById('canvas-container').style.display = 'none';
 
+  // Hide boss UI
   var bossName = document.getElementById('boss-name');
   if (bossName) bossName.style.display = 'none';
   var bossBar = document.getElementById('boss-health-bar');
@@ -57,6 +58,25 @@ function showMainMenu() {
   var summonBtn = document.getElementById('summon-btn');
   if (summonBtn) summonBtn.style.display = 'none';
 
+  // Hide in-game floating buttons
+  var surgeBtn = document.getElementById('surge-btn');
+  if (surgeBtn) surgeBtn.style.display = 'none';
+  var eventBtn = document.getElementById('event-btn');
+  if (eventBtn) eventBtn.style.display = 'none';
+
+  // Hide goals panel and queen abilities (dynamically created)
+  var goalsPanel = document.getElementById('goals-panel');
+  if (goalsPanel) goalsPanel.style.display = 'none';
+  var queenAbilities = document.getElementById('queen-abilities');
+  if (queenAbilities) queenAbilities.style.display = 'none';
+  // Hide rival warning if exists
+  var rivalWarning = document.getElementById('rival-warning');
+  if (rivalWarning) rivalWarning.style.display = 'none';
+  // Hide reactive event panel
+  var reactivePanel = document.getElementById('reactive-event-panel');
+  if (reactivePanel) reactivePanel.style.display = 'none';
+
+  // Clear toasts & floaters
   var toastEl = document.getElementById('toast'); if (toastEl) { toastEl.style.opacity = '0'; toastEl.textContent = ''; }
   var floatersEl = document.getElementById('floaters'); if (floatersEl) floatersEl.innerHTML = '';
   var tutEl = document.getElementById('tutorial-toast'); if (tutEl) tutEl.style.opacity = '0';
@@ -77,6 +97,11 @@ function hideMainMenu() {
   var bossBar = document.getElementById('boss-health-bar');
   if (bossBar) bossBar.style.display = 'none';
   gamePaused = false;
+
+  // Restore goals panel (will be updated by refreshHUD soon)
+  var goalsPanel = document.getElementById('goals-panel');
+  if (goalsPanel) goalsPanel.style.display = 'flex';
+  // Queen abilities will be shown by updateQueenAbilityButtons() called from refreshHUD
 }
 
 // ----- Save slot rendering (three separate buttons) -----
