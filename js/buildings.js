@@ -301,8 +301,8 @@ function enqueueBuild(type) {
   state.food -= cost;
   state.buildQueue.push({
     type: type,
-    timeRemaining: BAL.buildTimes[type] || 5,
-    totalTime: BAL.buildTimes[type] || 5
+    timeRemaining: (BAL.buildTimes && BAL.buildTimes[type]) ? BAL.buildTimes[type] : 5,
+    totalTime: (BAL.buildTimes && BAL.buildTimes[type]) ? BAL.buildTimes[type] : 5
   });
   updateBuildButtonLabels();
   refreshBuildQueueUI();
@@ -327,35 +327,4 @@ function isBuildingUnlockActive(feature) {
     }
   }
   return false;
-}
-
-// ---- Update build button states and labels ----
-function updateBuildButtons() {
-  var buttons = {
-    "build-food-storage": "foodStorage",
-    "build-nursery": "nursery",
-    "build-soldier": "soldier",
-    "build-research": "research",
-    "build-scout": "scout"
-  };
-
-  for (var btnId in buttons) {
-    var type = buttons[btnId];
-    var bld = BUILDINGS[type];
-    var btn = document.getElementById(btnId);
-    if (!btn) continue;
-
-    if (!bld.canBuild()) {
-      btn.disabled = true;
-      btn.textContent = "MAX";
-    } else {
-      btn.disabled = false;
-      btn.textContent = bld.getCost() + "🌾";
-    }
-  }
-}
-
-// ---- Update build button labels only ----
-function updateBuildButtonLabels() {
-  updateBuildButtons();
       }
