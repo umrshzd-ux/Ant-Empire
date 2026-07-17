@@ -5,6 +5,7 @@
 
 var scouts = [];
 var SCOUT_SCALE = 1.4;
+var _firstScoutReturned = false;  // track first scout return for guaranteed discovery
 
 // ---- Spawn a new scout ----
 function spawnScout() {
@@ -137,6 +138,15 @@ function processScoutReturn(s) {
   // Explorer class bonus: double discovery chance
   if (s.antClass === "explorer") discoveryChance *= 2;
 
+  // First scout return: guaranteed discovery (Seed Cache)
+  if (!_firstScoutReturned && typeof DISCOVERIES !== 'undefined' && DISCOVERIES.seedCache) {
+    _firstScoutReturned = true;
+    DISCOVERIES.seedCache.action(pos);
+    showToast("🎉 First discovery! Seed Cache found! +food, +10 permanent food cap");
+    AudioManager.sfx.achievement();
+    return;
+  }
+
   if (Math.random() < discoveryChance) {
     if (typeof attemptDiscovery === 'function') {
       attemptDiscovery(pos);
@@ -154,6 +164,11 @@ function getEffectiveScoutSpeed() {
   return base;
 }
 
+// ---- Reset first-scout flag on prestige/ascension (call from main.js reset) ----
+function resetFirstScoutFlag() {
+  _firstScoutReturned = false;
+}
+
 // ---- Kill all scouts (used during prestige/ascension reset) ----
 function clearAllScouts() {
   for (var i = scouts.length - 1; i >= 0; i--) {
@@ -165,4 +180,4 @@ function clearAllScouts() {
     }
   }
   scouts = [];
-                                               }
+}
