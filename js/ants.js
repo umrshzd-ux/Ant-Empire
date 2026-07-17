@@ -149,7 +149,18 @@ function updateSoldier(s, dt) {
   if (s.mesh && s.mesh.userData && s.mesh.userData.mandibles && s.mesh.userData.mandibles.length > 0) { s.mesh.userData.idleTime = (s.mesh.userData.idleTime || 0) + dt; var twitch = Math.sin(s.mesh.userData.idleTime * 2) > 0.9 ? 0.02 : 0; s.mesh.userData.mandibles.forEach(function(m) { m.rotation.x = (m.userData && m.userData.baseRX || 0.5) + twitch; }); }
   if (s.health < s.maxHealth && now - s.lastCombatTime > BAL.soldierRegenDelay) { s.health = Math.min(s.maxHealth, s.health + BAL.soldierRegenRate * dt); updateHealthBar(s.healthBar, s.health / s.maxHealth); }
   if (s.waitTimer > 0) { s.waitTimer -= dt; return; }
-  var distToNest = s.mesh.position.distanceTo(ER); if (distToNest < 2.0) { var pushDir = new THREE.Vector3().subVectors(s.mesh.position, ER).normalize(); if (pushDir.length() < 0.01) pushDir.set(1, 0, 0); s.mesh.position.x += pushDir.x * 0.15; s.mesh.position.z += pushDir.z * 0.15; }
+  var distToNest = s.mesh.position.distanceTo(ER);
+  if (distToNest < 2.0) { var pushDir = new THREE.Vector3().subVectors(s.mesh.position, ER).normalize(); if (pushDir.length() < 0.01) pushDir.set(1, 0, 0); s.mesh.position.x += pushDir.x * 0.15; s.mesh.position.z += pushDir.z * 0.15; }
+  
+  // ----- FIX: soldier never stands at the nest entrance -----
+  if (distToNest < 3.0) {
+    // Skip the entrance if it's the current patrol target
+    s.patrolIndex = (s.patrolIndex + 1) % PATROL_POINTS.length;
+    s.target.copy(PATROL_POINTS[s.patrolIndex]);
+    s.waitTimer = 0.2; // small pause to break the loop
+    return;
+  }
+
   if (state.bossActive && state.currentBoss) { var bPos = state.currentBoss.mesh.position; var bDist = s.mesh.position.distanceTo(bPos); if (bDist < 8.0) { var bdx = bPos.x - s.mesh.position.x, bdz = bPos.z - s.mesh.position.z; var bDist2 = Math.sqrt(bdx * bdx + bdz * bdz); if (bDist2 > 1.2) { var bstep = Math.min(s.speed * 1.5 * dt, bDist2); s.mesh.position.x += (bdx / bDist2) * bstep; s.mesh.position.z += (bdz / bDist2) * bstep; s.mesh.rotation.y = Math.atan2(bdx, bdz); s.mesh.position.y = GTY; s.waitTimer = 0; return; } } }
   var ne = null, nd = 4.0; for (var i = 0; i < enemies.length; i++) { var d = s.mesh.position.distanceTo(enemies[i].mesh.position); if (d < nd) { nd = d; ne = enemies[i]; } }
   if (ne) { var p = s.mesh.position, e = ne.mesh.position; var dx = e.x - p.x, dy = e.y - p.y, dz = e.z - p.z; var dist = Math.sqrt(dx * dx + dy * dy + dz * dz); if (dist > 1.2) { var step = Math.min(s.speed * 1.2 * dt, dist); p.x += (dx / dist) * step; p.y += (dy / dist) * step; p.z += (dz / dist) * step; s.mesh.rotation.y = Math.atan2(dx, dz); } return; }
