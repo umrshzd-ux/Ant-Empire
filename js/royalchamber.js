@@ -1,6 +1,7 @@
 // ===== ROYAL CHAMBER & QUEEN ABILITIES =====
 // The Royal Chamber unlocks active Queen abilities that the player can trigger.
 // Each ability has a cooldown and provides a temporary powerful effect.
+// Building is handled by buildings.js – this file only manages abilities.
 
 var QUEEN_ABILITIES = {
   // ---- Tier 1: Available when Royal Chamber is built ----
@@ -11,6 +12,7 @@ var QUEEN_ABILITIES = {
     cooldown: 60, // seconds
     duration: 0,  // instant
     cost: 0,
+    unlock: null, // always available after Royal Chamber
     action: function() {
       for (var i = 0; i < BAL.surgeEggs; i++) {
         state.eggs++;
@@ -40,6 +42,7 @@ var QUEEN_ABILITIES = {
     cooldown: 120,
     duration: 15,
     cost: 0,
+    unlock: "queensWrathResearch",
     action: function() {
       for (var i = 0; i < soldiers.length; i++) {
         soldiers[i].damageMultiplier = (soldiers[i].damageMultiplier || 1) * 2;
@@ -59,6 +62,7 @@ var QUEEN_ABILITIES = {
     cooldown: 90,
     duration: 20,
     cost: 0,
+    unlock: null, // always available after Royal Chamber
     action: function() {
       state.speedBoostTimer = Math.max(state.speedBoostTimer, 20);
       applyAllWorkerSpeeds();
@@ -67,7 +71,7 @@ var QUEEN_ABILITIES = {
     }
   },
 
-  // ---- Tier 3: Unlocked after evolution ----
+  // ---- Tier 3: Unlocked after research ----
   pheromoneShield: {
     name: "Pheromone Shield",
     emoji: "🛡️",
@@ -75,6 +79,7 @@ var QUEEN_ABILITIES = {
     cooldown: 180,
     duration: 10,
     cost: 0,
+    unlock: "pheromoneMastery",
     action: function() {
       state.defenseBannerTimer = Math.max(state.defenseBannerTimer, 10);
       showToast("🛡️ Pheromone Shield! 50% damage reduction!");
@@ -90,6 +95,7 @@ var QUEEN_ABILITIES = {
     cooldown: 300,
     duration: 0,
     cost: 0,
+    unlock: null, // always available after Royal Chamber
     action: function() {
       for (var i = 0; i < 3; i++) {
         if (state.chambers.soldier.count < BAL.maxSoldierChambers) {
@@ -116,52 +122,6 @@ for (var key in QUEEN_ABILITIES) {
   queenAbilityCooldowns[key] = 0;
 }
 
-// ---- Build Royal Chamber ----
-function buildRoyalChamber() {
-  if (state.chambers.royal && state.chambers.royal.count >= 1) {
-    showToast("Royal Chamber already exists!");
-    return;
-  }
-
-  var cost = 300;
-  if (state.food < cost) {
-    showToast("Need " + cost + " food!");
-    return;
-  }
-
-  state.food -= cost;
-  if (!state.chambers.royal) state.chambers.royal = { count: 0 };
-  state.chambers.royal.count = 1;
-
-  // Create visual
-  var chX = TX + 5 + BAL.researchRowStart + 4;
-  var royalChamber = makeChamber(chX, CCY, CZ, 3, 2, 4, 0x8a6a3a);
-  makeLabel("👑 Royal Chamber", chX, CCY + 1.4, CZ, 256, 64, true);
-
-  // Golden orb effect
-  var royalGroup = new THREE.Group();
-  royalGroup.position.set(chX, CCY + 1.8, CZ);
-  var orbMat = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffaa00, emissiveIntensity: 1.2 });
-  for (var i = 0; i < 7; i++) {
-    var orb = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), orbMat);
-    var angle = (i / 7) * Math.PI * 2;
-    orb.position.set(Math.cos(angle) * 0.7, Math.sin(i * 1.5) * 0.2, Math.sin(angle) * 0.7);
-    royalGroup.add(orb);
-  }
-  scene.add(royalGroup);
-  if (!state._royalGroups) state._royalGroups = [];
-  state._royalGroups.push(royalGroup);
-
-  AudioManager.sfx.buttonClick();
-  updateDailyProgress('build1', 1);
-  showToast("👑 Royal Chamber built! Queen abilities unlocked!");
-
-  // Unlock first ability button
-  updateQueenAbilityButtons();
-  refreshHUD();
-  checkAchievements();
-}
-
 // ---- Use a Queen ability ----
 function useQueenAbility(abilityId) {
   var ability = QUEEN_ABILITIES[abilityId];
@@ -173,13 +133,19 @@ function useQueenAbility(abilityId) {
     return;
   }
 
+  // Check if ability is unlocked via research
+  if (ability.unlock && (!state.completedResearch || state.completedResearch.indexOf(ability.unlock) === -1)) {
+    showToast("Research required for " + ability.name + "!");
+    return;
+  }
+
   // Check cooldown
   if (queenAbilityCooldowns[abilityId] > 0) {
     showToast("Ability on cooldown! " + Math.ceil(queenAbilityCooldowns[abilityId]) + "s remaining.");
     return;
   }
 
-  // Check cost (future: some abilities may cost gems)
+  // Check cost
   if (ability.cost > 0 && state.gems < ability.cost) {
     showToast("Need " + ability.cost + " 💎!");
     return;
@@ -222,8 +188,8 @@ function updateQueenAbilityCooldowns(dt) {
     }
   }
 
-  // Update ability button text every 5 seconds
-  if (Math.floor(Date.now() / 1000) % 5 === 0) {
+  // Update ability button labels every second for cooldown timers
+  if (Math.floor(Date.now() / 1000) % 1 === 0) {
     updateQueenAbilityButtons();
   }
 }
@@ -239,7 +205,7 @@ function updateQueenAbilityButtons() {
   if (!container) {
     container = document.createElement('div');
     container.id = 'queen-abilities';
-    container.style.cssText = 'position:absolute; top:55px; left:50%; transform:translateX(-50%); z-index:25; display:flex; gap:6px;';
+    container.style.cssText = 'position:fixed; top:110px; left:50%; transform:translateX(-50%); z-index:110; display:flex; gap:6px; pointer-events:auto;';
     document.body.appendChild(container);
   }
 
@@ -249,6 +215,11 @@ function updateQueenAbilityButtons() {
   var html = '';
   for (var i = 0; i < abilityIds.length; i++) {
     var ab = QUEEN_ABILITIES[abilityIds[i]];
+    // Check if ability is unlocked
+    if (ab.unlock && (!state.completedResearch || state.completedResearch.indexOf(ab.unlock) === -1)) {
+      continue; // skip locked abilities
+    }
+
     var cd = queenAbilityCooldowns[abilityIds[i]];
     var onCooldown = cd > 0;
     html += '<button onclick="useQueenAbility(\'' + abilityIds[i] + '\')" ' +
