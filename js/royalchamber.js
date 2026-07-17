@@ -188,7 +188,7 @@ function updateQueenAbilityCooldowns(dt) {
     }
   }
 
-  // Update ability button display every second for cooldown timers
+  // Update ability button display every second
   if (Math.floor(Date.now() / 1000) % 1 === 0) {
     updateQueenAbilityButtons();
   }
@@ -208,7 +208,7 @@ function updateQueenAbilityButtons() {
   if (!container) {
     container = document.createElement('div');
     container.id = 'queen-abilities';
-    // Right‑side vertical bar, out of the way
+    // Right‑side vertical bar, small circles, no text
     container.style.cssText = 'position:fixed; top:50%; right:8px; transform:translateY(-50%);' +
       'z-index:120; display:none; flex-direction:column; gap:8px; pointer-events:auto;';
     document.body.appendChild(container);
@@ -228,13 +228,11 @@ function updateQueenAbilityButtons() {
     var cd = queenAbilityCooldowns[abilityIds[i]];
     var onCooldown = cd > 0;
 
-    // Small circular button with emoji, no text, just a tiny cooldown ring
-    var size = 48; // px
+    // Small circle button
+    var size = 44; // px
     var bg = onCooldown ? 'rgba(80,80,80,0.85)' : 'rgba(180,120,30,0.85)';
     var ringColor = onCooldown ? '#888' : '#ffd700';
-    var cdPercent = onCooldown ? (cd / ab.cooldown) : 0; // 1 = full, 0 = ready
-
-    // Use conic gradient for cooldown ring (CSS)
+    var cdPercent = onCooldown ? (cd / ab.cooldown) : 0;
     var ringStyle = '';
     if (onCooldown) {
       var angle = 360 * (1 - cdPercent);
@@ -243,9 +241,9 @@ function updateQueenAbilityButtons() {
 
     html += '<button onclick="useQueenAbility(\'' + abilityIds[i] + '\')" ' +
             'style="width:' + size + 'px; height:' + size + 'px; border-radius:50%; border:2px solid ' + ringColor + ';' +
-            'background: ' + bg + '; color:#fff; font-size:22px; cursor:pointer;' +
+            'background: ' + bg + '; color:#fff; font-size:20px; cursor:pointer;' +
             'display:flex; align-items:center; justify-content:center;' +
-            'box-shadow:0 4px 10px rgba(0,0,0,0.5);' +
+            'box-shadow:0 4px 8px rgba(0,0,0,0.5);' +
             (onCooldown ? ' position:relative; overflow:hidden;' : '') +
             '"' +
             (onCooldown ? ' disabled' : '') +
