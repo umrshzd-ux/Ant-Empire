@@ -876,6 +876,7 @@ canvas { display: block; }
 
 <!-- SCRIPTS -->
 <!-- SCRIPTS -->
+<!-- SCRIPTS – CORRECTED LOAD ORDER -->
 <script src="js/three.min.js?v=final-2026"></script>
 <script src="js/audio.js?v=final-2026"></script>
 <script src="js/config.js?v=final-2026"></script>
@@ -891,17 +892,17 @@ canvas { display: block; }
 <script src="js/buildings.js?v=final-2026"></script>
 <script src="js/research.js?v=final-2026"></script>
 <script src="js/bosses.js?v=final-2026"></script>
-<script src="js/main.js?v=final-2026"></script>
 <script src="js/camera.js?v=final-2026"></script>
 <script src="js/chambers.js?v=final-2026"></script>
 <script src="js/ants.js?v=final-2026"></script>
 <script src="js/enemies.js?v=final-2026"></script>
 <script src="js/combat.js?v=final-2026"></script>
 <script src="js/abilities.js?v=final-2026"></script>
+<!-- main.js must load AFTER all the files that define the functions it uses -->
+<script src="js/main.js?v=final-2026"></script>
 <script src="js/ui.js?v=final-2026"></script>
 <script src="js/shop.js?v=final-2026"></script>
 <script src="js/upgrades.js?v=final-2026"></script>
-
 <script>
 // ===== DUST PARTICLES =====
 (function(){
