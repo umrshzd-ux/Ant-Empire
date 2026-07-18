@@ -1,6 +1,6 @@
 // ===== ANT MODEL, WORKERS, SOLDIERS, QUEEN, EGGS =====
 // Scouts have been moved to scouts.js
-// Ant classes integrated via antclasses.js (assignClass, applyClassBonuses)
+// Ant classes integrated via antclasses.js
 
 var NEST_SAFE_RADIUS = 6.0;
 
@@ -68,7 +68,7 @@ function createWorker(golden, rareType, forceRender) {
   var w = { id: id, mesh: mesh, station: st, slotIndex: null, state: "TO_FOOD", path: pathToStation(st), pathIndex: 0, speed: baseSpeed * speedMult + Math.random() * 0.4, waitTimer: Math.random() * 1.5, carrying: false, foodIcon: null, eggIcon: null, targetScale: ws, rendered: true, personalOffset: (Math.random() - 0.5) * 0.6, isSoldier: false, isScout: false, carryingEgg: false, avoidTimer: 0, isGolden: golden || false, isRare: !!rareType, rareType: rareType, foodBonus: rareType ? rareType.foodBonus : 0, _speedMult: speedMult };
   if (state.rallyActive) w.speed *= BAL.rallySpeedMultiplier;
 
-  // ----- Ant Class Integration -----
+  // Ant class integration
   var cls = typeof assignClass === 'function' ? assignClass("worker") : null;
   if (cls) applyClassBonuses(w, cls);
 
@@ -129,7 +129,7 @@ function spawnSoldier(chX) {
   var mh = getEffectiveSoldierMaxHealth();
   var soldier = { mesh: mesh, health: mh, maxHealth: mh, healthBar: hb, patrolIndex: 0, target: PATROL_POINTS[0].clone(), speed: 0.9 + Math.random() * 0.3, waitTimer: 0, isSoldier: true, attackCooldown: 0, lastCombatTime: 0, guardMesh: null, chX: chX, freezeTimer: 0, damageMultiplier: 1 };
 
-  // ----- Ant Class Integration -----
+  // Ant class integration
   var cls = typeof assignClass === 'function' ? assignClass("soldier") : null;
   if (cls) applyClassBonuses(soldier, cls);
 
@@ -151,7 +151,6 @@ function updateSoldier(s, dt) {
   if (s.waitTimer > 0) { s.waitTimer -= dt; return; }
 
   // ---- COMBAT ALWAYS HAS PRIORITY ----
-  // Check for nearby enemies first
   var ne = null, nd = 4.0;
   for (var i = 0; i < enemies.length; i++) {
     var d = s.mesh.position.distanceTo(enemies[i].mesh.position);
@@ -168,7 +167,6 @@ function updateSoldier(s, dt) {
       p.z += (dz / dist) * step;
       s.mesh.rotation.y = Math.atan2(dx, dz);
     }
-    // Attack is handled in combat.js – soldier just moves toward enemy
     return;
   }
 
@@ -190,7 +188,7 @@ function updateSoldier(s, dt) {
     }
   }
 
-  // ---- NEST ENTRANCE PUSH (only when no enemies are nearby) ----
+  // ---- NEST ENTRANCE PUSH ----
   var distToNest = s.mesh.position.distanceTo(ER);
   if (distToNest < 2.0) {
     var pushDir = new THREE.Vector3().subVectors(s.mesh.position, ER).normalize();
@@ -247,4 +245,4 @@ function hatchEgg(egg, i) {
   updateNurseryClusters(); updateDailyProgress('hatch5', 1); if (rt) showToast(rt.emoji + " Rare " + rt.name + " hatched!"); checkAchievements(); pTH();
 }
 
-function isBossNearby(w, range) { if (!state.bossActive || !state.currentBoss || !state.currentBoss.mesh) return false; if (!w.mesh) return false; return w.mesh.position.distanceTo(state.currentBoss.mesh.position) < range; 
+function isBossNearby(w, range) { if (!state.bossActive || !state.currentBoss || !state.currentBoss.mesh) return false; if (!w.mesh) return false; return w.mesh.position.distanceTo(state.currentBoss.mesh.position) < range; }
