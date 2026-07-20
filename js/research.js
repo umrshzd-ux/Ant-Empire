@@ -379,4 +379,4 @@ function initResearch() {
   if (!state.completedResearch) {
     state.completedResearch = [];
   }
-}
+  }
