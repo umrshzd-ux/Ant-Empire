@@ -682,7 +682,48 @@ function setupShopTabs() {
 }
 
 // =============================================
-//  BUTTON SETUP
+//  TERRITORY PANEL (new)
+// =============================================
+var territoriesPanel = null;
+
+function toggleTerritoriesPanel() {
+  if (!territoriesPanel) {
+    territoriesPanel = document.createElement('div');
+    territoriesPanel.id = 'territories-panel';
+    territoriesPanel.className = 'game-panel';
+    document.body.appendChild(territoriesPanel);
+  }
+  if (territoriesPanel.classList.contains('open')) {
+    territoriesPanel.classList.remove('open');
+  } else {
+    // Close other panels
+    [buildPanel, upgradePanel, shopPanel, achPanel, evoPanel, ppPanel, ascPanel, researchPanel].forEach(function(p) {
+      if (p) p.classList.remove('open');
+    });
+    territoriesPanel.classList.add('open');
+    refreshTerritoriesUI();
+  }
+}
+
+function refreshTerritoriesUI() {
+  if (!territoriesPanel) return;
+  var html = '<div style="color:#ffd27a; font-weight:700; text-align:center; margin-bottom:6px;">🗺️ Territories</div>';
+  if (state.territoriesClaimed.length === 0) {
+    html += '<div style="color:#aaa; text-align:center;">No territories claimed yet. Click a flag on the surface to claim one.</div>';
+  } else {
+    for (var i = 0; i < state.territoriesClaimed.length; i++) {
+      var terr = state.territoriesClaimed[i];
+      html += '<div class="panel-option">';
+      html += '<span>🏁 Zone: ' + terr.zone + ' Lv' + terr.level + '<br><small>🐜 ' + terr.assignedWorkers + ' workers | 🛡️ ' + terr.assignedSoldiers + ' soldiers</small></span>';
+      html += '<button onclick="showTerritoryAssignPanel(\'' + terr.id + '\')">Manage</button>';
+      html += '</div>';
+    }
+  }
+  territoriesPanel.innerHTML = html;
+}
+
+// =============================================
+//  BUTTON SETUP (updated with territory button)
 // =============================================
 function setupButtons() {
   buildPanel = document.getElementById("build-panel"); upgradePanel = document.getElementById("upgrade-panel"); shopPanel = document.getElementById("shop-panel");
@@ -734,6 +775,26 @@ function setupButtons() {
 
   for (var i = 0; i < allShopIds.length; i++) { var id = allShopIds[i]; if (GEM_ITEMS[id].oneTime && state.gemUpgrades[id]) { var btn = document.getElementById("btn-shop-" + id); if (btn) { btn.disabled = true; btn.textContent = "Owned"; } } }
   refreshUpgradeUI(); refreshAscensionShopUI();
+
+  // ----- Territory button in More panel (new) -----
+  var btnTerritories = document.getElementById("btn-territories");
+  if (!btnTerritories) {
+    btnTerritories = document.createElement('button');
+    btnTerritories.id = "btn-territories";
+    btnTerritories.className = "build-btn";
+    btnTerritories.textContent = "🗺️ Territories";
+    btnTerritories.style.display = "none";  // shown later if conditions met
+    var morePanel = document.getElementById("more-panel");
+    if (morePanel) morePanel.appendChild(btnTerritories);
+  }
+  btnTerritories.onclick = function() {
+    AudioManager.sfx.buttonClick();
+    toggleTerritoriesPanel();
+  };
+  // Show button if at least one territory is claimed or research chamber is built (tease)
+  if (btnTerritories) {
+    btnTerritories.style.display = (state.territoriesClaimed.length > 0 || state.chambers.research.count > 0) ? 'inline-block' : 'none';
+  }
 }
 
 // =============================================
@@ -866,4 +927,4 @@ function buyUpgrade(type) {
   showToast(msg);
   refreshUpgradeUI();
   refreshHUD();
-  }
+    }
