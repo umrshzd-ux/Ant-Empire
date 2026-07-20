@@ -1,5 +1,4 @@
 // ===== HUD, TOASTS, FLOATERS, MENUS, ACHIEVEMENTS, DAILY, STATS, PRESTIGE/ASCENSION UI =====
-// Ensure all global arrays exist before anything else
 var workers = typeof workers !== 'undefined' ? workers : [];
 var soldiers = typeof soldiers !== 'undefined' ? soldiers : [];
 var scouts = typeof scouts !== 'undefined' ? scouts : [];
@@ -37,10 +36,8 @@ function initDOMRefs() {
   elAlertsContent = document.getElementById("alerts-content");
   elResourcesPanel = document.getElementById("resources-panel");
   elMorePanel = document.getElementById("more-panel");
-
   toastEl = document.getElementById("toast");
   floatersEl = document.getElementById("floaters");
-
   buildPanel = document.getElementById("build-panel");
   upgradePanel = document.getElementById("upgrade-panel");
   shopPanel = document.getElementById("shop-panel");
@@ -49,7 +46,6 @@ function initDOMRefs() {
   ppPanel = document.getElementById("prestige-shop-panel");
   ascPanel = document.getElementById("ascension-shop-panel");
   researchPanel = document.getElementById("research-panel");
-
   surgeBtn = document.getElementById("surge-btn");
   eventBtn = document.getElementById("event-btn");
   summonBtn = document.getElementById("summon-btn");
@@ -764,7 +760,6 @@ function setupButtons() {
 // =============================================
 function setupGameListeners() {
   if (rallyBtn) rallyBtn.addEventListener("click", activateRally);
-
   if (surgeBtn) {
     surgeBtn.addEventListener("click", function() {
       try {
@@ -810,28 +805,17 @@ function setupGameListeners() {
   }
   if (summonBtn) {
     summonBtn.addEventListener("click", function() {
-      try {
-        if (typeof summonBoss === 'function') summonBoss();
-      } catch (e) {
-        console.error("Summon error:", e);
-      }
+      try { if (typeof summonBoss === 'function') summonBoss(); } catch (e) { console.error("Summon error:", e); }
     });
   }
-
   document.addEventListener('click', function(e) {
-    if (!e.target.closest('#alerts-panel') && !e.target.closest('#alerts-pill')) {
-      if (elAlertsPanel) elAlertsPanel.style.display = 'none';
-    }
-    if (!e.target.closest('#resources-panel') && !e.target.closest('#resources-pill')) {
-      if (elResourcesPanel) elResourcesPanel.style.display = 'none';
-    }
+    if (!e.target.closest('#alerts-panel') && !e.target.closest('#alerts-pill')) { if (elAlertsPanel) elAlertsPanel.style.display = 'none'; }
+    if (!e.target.closest('#resources-panel') && !e.target.closest('#resources-pill')) { if (elResourcesPanel) elResourcesPanel.style.display = 'none'; }
   });
-
   var alertsCloseBtn = document.getElementById('alerts-close-btn');
   if (alertsCloseBtn) alertsCloseBtn.onclick = function() { if (elAlertsPanel) elAlertsPanel.style.display = 'none'; };
   var resourcesCloseBtn = document.getElementById('resources-close-btn');
   if (resourcesCloseBtn) resourcesCloseBtn.onclick = function() { if (elResourcesPanel) elResourcesPanel.style.display = 'none'; };
-
   var alertsPill = document.getElementById("alerts-pill");
   if (alertsPill) alertsPill.onclick = function() {
     AudioManager.sfx.buttonClick();
@@ -840,7 +824,6 @@ function setupGameListeners() {
       else { elResourcesPanel.style.display = 'none'; elAlertsPanel.style.display = 'flex'; updateAlertsPanel(); }
     }
   };
-
   var resourcesPill = document.getElementById("resources-pill");
   if (resourcesPill) resourcesPill.onclick = function() {
     AudioManager.sfx.buttonClick();
@@ -849,7 +832,6 @@ function setupGameListeners() {
       else { elAlertsPanel.style.display = 'none'; elResourcesPanel.style.display = 'flex'; updateResourcesPopup(); }
     }
   };
-
   var btnMore = document.getElementById("btn-more");
   if (btnMore) btnMore.onclick = function() { AudioManager.sfx.buttonClick(); toggleMorePanel(); };
-}
+       }
