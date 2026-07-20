@@ -1,6 +1,6 @@
 // ===== ANT MODEL, WORKERS, SOLDIERS, QUEEN, EGGS =====
 // Scouts have been moved to scouts.js
-// Ant classes integrated via antclasses.js
+// Ant classes integrated via antclasses.js (assignClass, applyClassBonuses)
 
 var NEST_SAFE_RADIUS = 6.0;
 
@@ -68,7 +68,7 @@ function createWorker(golden, rareType, forceRender) {
   var w = { id: id, mesh: mesh, station: st, slotIndex: null, state: "TO_FOOD", path: pathToStation(st), pathIndex: 0, speed: baseSpeed * speedMult + Math.random() * 0.4, waitTimer: Math.random() * 1.5, carrying: false, foodIcon: null, eggIcon: null, targetScale: ws, rendered: true, personalOffset: (Math.random() - 0.5) * 0.6, isSoldier: false, isScout: false, carryingEgg: false, avoidTimer: 0, isGolden: golden || false, isRare: !!rareType, rareType: rareType, foodBonus: rareType ? rareType.foodBonus : 0, _speedMult: speedMult };
   if (state.rallyActive) w.speed *= BAL.rallySpeedMultiplier;
 
-  // Ant class integration
+  // ----- Ant Class Integration -----
   var cls = typeof assignClass === 'function' ? assignClass("worker") : null;
   if (cls) applyClassBonuses(w, cls);
 
@@ -129,7 +129,7 @@ function spawnSoldier(chX) {
   var mh = getEffectiveSoldierMaxHealth();
   var soldier = { mesh: mesh, health: mh, maxHealth: mh, healthBar: hb, patrolIndex: 0, target: PATROL_POINTS[0].clone(), speed: 0.9 + Math.random() * 0.3, waitTimer: 0, isSoldier: true, attackCooldown: 0, lastCombatTime: 0, guardMesh: null, chX: chX, freezeTimer: 0, damageMultiplier: 1 };
 
-  // Ant class integration
+  // ----- Ant Class Integration -----
   var cls = typeof assignClass === 'function' ? assignClass("soldier") : null;
   if (cls) applyClassBonuses(soldier, cls);
 
@@ -149,81 +149,28 @@ function updateSoldier(s, dt) {
   if (s.mesh && s.mesh.userData && s.mesh.userData.mandibles && s.mesh.userData.mandibles.length > 0) { s.mesh.userData.idleTime = (s.mesh.userData.idleTime || 0) + dt; var twitch = Math.sin(s.mesh.userData.idleTime * 2) > 0.9 ? 0.02 : 0; s.mesh.userData.mandibles.forEach(function(m) { m.rotation.x = (m.userData && m.userData.baseRX || 0.5) + twitch; }); }
   if (s.health < s.maxHealth && now - s.lastCombatTime > BAL.soldierRegenDelay) { s.health = Math.min(s.maxHealth, s.health + BAL.soldierRegenRate * dt); updateHealthBar(s.healthBar, s.health / s.maxHealth); }
   if (s.waitTimer > 0) { s.waitTimer -= dt; return; }
-
-  // ---- COMBAT ALWAYS HAS PRIORITY ----
-  var ne = null, nd = 4.0;
-  for (var i = 0; i < enemies.length; i++) {
-    var d = s.mesh.position.distanceTo(enemies[i].mesh.position);
-    if (d < nd) { nd = d; ne = enemies[i]; }
-  }
-  if (ne) {
-    var p = s.mesh.position, e = ne.mesh.position;
-    var dx = e.x - p.x, dy = e.y - p.y, dz = e.z - p.z;
-    var dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-    if (dist > 1.2) {
-      var step = Math.min(s.speed * 1.2 * dt, dist);
-      p.x += (dx / dist) * step;
-      p.y += (dy / dist) * step;
-      p.z += (dz / dist) * step;
-      s.mesh.rotation.y = Math.atan2(dx, dz);
-    }
-    return;
-  }
-
-  // ---- BOSS TARGETING ----
-  if (state.bossActive && state.currentBoss) {
-    var bPos = state.currentBoss.mesh.position;
-    var bDist = s.mesh.position.distanceTo(bPos);
-    if (bDist < 8.0) {
-      var bdx = bPos.x - s.mesh.position.x, bdz = bPos.z - s.mesh.position.z;
-      var bDist2 = Math.sqrt(bdx * bdx + bdz * bdz);
-      if (bDist2 > 1.2) {
-        var bstep = Math.min(s.speed * 1.5 * dt, bDist2);
-        s.mesh.position.x += (bdx / bDist2) * bstep;
-        s.mesh.position.z += (bdz / bDist2) * bstep;
-        s.mesh.rotation.y = Math.atan2(bdx, bdz);
-        s.mesh.position.y = GTY;
-      }
-      return;
-    }
-  }
-
-  // ---- NEST ENTRANCE PUSH ----
   var distToNest = s.mesh.position.distanceTo(ER);
+  // Push soldiers away from the nest entrance to prevent blocking
   if (distToNest < 2.0) {
     var pushDir = new THREE.Vector3().subVectors(s.mesh.position, ER).normalize();
     if (pushDir.length() < 0.01) pushDir.set(1, 0, 0);
     s.mesh.position.x += pushDir.x * 0.15;
     s.mesh.position.z += pushDir.z * 0.15;
   }
-
-  // ---- SKIP PATROL TARGETS NEAR ENTRANCE ----
+  // If the soldier's current patrol target is too close to the entrance, skip it
   if (s.target && s.target.distanceTo(ER) < 2.0) {
     s.patrolIndex = (s.patrolIndex + 1) % PATROL_POINTS.length;
     s.target.copy(PATROL_POINTS[s.patrolIndex]);
     s.waitTimer = 0.3;
     return;
   }
-
-  // ---- NORMAL PATROL ----
-  var tgt = s.target;
-  var dx = tgt.x - s.mesh.position.x, dz = tgt.z - s.mesh.position.z;
-  var dist = Math.sqrt(dx * dx + dz * dz);
-  if (dist < 0.5) {
-    s.patrolIndex = (s.patrolIndex + 1) % PATROL_POINTS.length;
-    s.waitTimer = Math.random() < 0.4 ? 1.5 + Math.random() * 3 : 0.2;
-    s.target.copy(PATROL_POINTS[s.patrolIndex]);
-    return;
-  }
-  var ta = Math.atan2(dx, dz);
-  var ad = ta - s.mesh.rotation.y;
-  while (ad > Math.PI) ad -= Math.PI * 2;
-  while (ad < -Math.PI) ad += Math.PI * 2;
-  s.mesh.rotation.y += ad * Math.min(1, dt * 3);
-  var step = Math.min(s.speed * dt, dist);
-  s.mesh.position.x += (dx / dist) * step;
-  s.mesh.position.z += (dz / dist) * step;
-  s.mesh.position.y = GTY;
+  if (state.bossActive && state.currentBoss) { var bPos = state.currentBoss.mesh.position; var bDist = s.mesh.position.distanceTo(bPos); if (bDist < 8.0) { var bdx = bPos.x - s.mesh.position.x, bdz = bPos.z - s.mesh.position.z; var bDist2 = Math.sqrt(bdx * bdx + bdz * bdz); if (bDist2 > 1.2) { var bstep = Math.min(s.speed * 1.5 * dt, bDist2); s.mesh.position.x += (bdx / bDist2) * bstep; s.mesh.position.z += (bdz / bDist2) * bstep; s.mesh.rotation.y = Math.atan2(bdx, bdz); s.mesh.position.y = GTY; s.waitTimer = 0; return; } } }
+  var ne = null, nd = 4.0; for (var i = 0; i < enemies.length; i++) { var d = s.mesh.position.distanceTo(enemies[i].mesh.position); if (d < nd) { nd = d; ne = enemies[i]; } }
+  if (ne) { var p = s.mesh.position, e = ne.mesh.position; var dx = e.x - p.x, dy = e.y - p.y, dz = e.z - p.z; var dist = Math.sqrt(dx * dx + dy * dy + dz * dz); if (dist > 1.2) { var step = Math.min(s.speed * 1.2 * dt, dist); p.x += (dx / dist) * step; p.y += (dy / dist) * step; p.z += (dz / dist) * step; s.mesh.rotation.y = Math.atan2(dx, dz); } return; }
+  var tgt = s.target; var dx = tgt.x - s.mesh.position.x, dz = tgt.z - s.mesh.position.z; var dist = Math.sqrt(dx * dx + dz * dz);
+  if (dist < 0.5) { s.patrolIndex = (s.patrolIndex + 1) % PATROL_POINTS.length; s.waitTimer = Math.random() < 0.4 ? 1.5 + Math.random() * 3 : 0.2; s.target.copy(PATROL_POINTS[s.patrolIndex]); return; }
+  var ta = Math.atan2(dx, dz); var ad = ta - s.mesh.rotation.y; while (ad > Math.PI) ad -= Math.PI * 2; while (ad < -Math.PI) ad += Math.PI * 2; s.mesh.rotation.y += ad * Math.min(1, dt * 3);
+  var step = Math.min(s.speed * dt, dist); s.mesh.position.x += (dx / dist) * step; s.mesh.position.z += (dz / dist) * step; s.mesh.position.y = GTY;
 }
 
 var eggMs = [], hatchFx = [];
