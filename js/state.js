@@ -122,7 +122,13 @@ var state = {
   bossFightTimer: 0,
   _bossMilestonesHit: {},
   _bossRetreatTimer: 0,
-  _lastBossStealTime: 0
+  _lastBossStealTime: 0,
+
+  // ===== TERRITORY SYSTEM (new) =====
+  territoriesClaimed: [],          // [{ id, zone, pos:{x,y,z}, resourceType, level, claimedAt, assignedWorkers, assignedSoldiers }]
+  territoryUnlockCost: 100,        // base food cost to claim a new territory
+  territoryPassiveTimer: 0,        // accumulates dt for resource ticks
+  territoryScoutQueue: []          // queue of territories to be discovered by scouts
 };
 var queenScale = BAL.queenBaseScale;
 state.lastTime = performance.now();
@@ -203,6 +209,11 @@ function resetStateToDefault(slot) {
   state._bossMilestonesHit = {};
   state._bossRetreatTimer = 0;
   state._lastBossStealTime = 0;
+  // Territory reset
+  state.territoriesClaimed = [];
+  state.territoryUnlockCost = 100;
+  state.territoryPassiveTimer = 0;
+  state.territoryScoutQueue = [];
   recalculateHatchTime();
   updateEggLayTime();
   recalculateFoodCap();
@@ -251,6 +262,8 @@ function recalculateFoodCap() {
   if (state.researchBonuses && state.researchBonuses.foodCap) state.foodCap += state.researchBonuses.foodCap;
   // Zone exploration bonus: +30 per unlocked zone
   if (state.unlockedZonesList) state.foodCap += state.unlockedZonesList.length * 30;
+  // Territory bonus: +50 per claimed territory
+  if (state.territoriesClaimed) state.foodCap += state.territoriesClaimed.length * 50;
 }
 function getUpgradeCost(type) {
   var upg = UPGRADES[type];
@@ -420,6 +433,11 @@ function loadGameData(data) {
   state._bossMilestonesHit = {};
   state._bossRetreatTimer = 0;
   state._lastBossStealTime = 0;
+  // Territory load
+  if (data.territoriesClaimed) state.territoriesClaimed = data.territoriesClaimed;
+  if (data.territoryUnlockCost !== undefined) state.territoryUnlockCost = data.territoryUnlockCost;
+  if (data.territoryPassiveTimer !== undefined) state.territoryPassiveTimer = data.territoryPassiveTimer;
+  if (data.territoryScoutQueue) state.territoryScoutQueue = data.territoryScoutQueue;
   state.xpToNext = Math.floor(40 * Math.pow(1.15, state.level - 1));
   recalculateHatchTime();
   updateEggLayTime();
@@ -445,4 +463,4 @@ function addGems(amount) {
   state.totalGemsEarned += amount;
   state.lifetimeStats.totalGems = (state.lifetimeStats.totalGems || 0) + amount;
   showToast("+" + amount + "💎");
-  }
+      }
