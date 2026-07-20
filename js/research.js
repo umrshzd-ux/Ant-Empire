@@ -54,7 +54,7 @@ var RESEARCH_TREE = {
     effect: "Unlocks the Builder ant class. Build times reduced by 25%.",
     unlocks: ["builderClass"],
     onComplete: function() {
-      if (typeof unlockClass === 'function') unlockClass("builder");
+      // Builder class is automatically unlocked via its condition (research completed)
       showToast("🔨 Efficient Construction complete! Builder class unlocked");
     },
     prereq: "efficientGathering"
@@ -111,7 +111,7 @@ var RESEARCH_TREE = {
     unlocks: ["royalGuardClass"],
     onComplete: function() {
       state.researchBonuses.soldierDamage = (state.researchBonuses.soldierDamage || 0) + 5;
-      if (typeof unlockClass === 'function') unlockClass("royalGuard");
+      // Royal Guard class is automatically unlocked via its condition
       showToast("⚔️ Advanced Combat complete! Royal Guard class +5 damage");
     },
     prereq: "poisonResistance"
@@ -163,7 +163,7 @@ var RESEARCH_TREE = {
     effect: "Unlocks the Explorer class. Scout speed +30%.",
     unlocks: ["explorerClass"],
     onComplete: function() {
-      if (typeof unlockClass === 'function') unlockClass("explorer");
+      // Explorer class is automatically unlocked via its condition
       state.researchBonuses.scoutSpeed = (state.researchBonuses.scoutSpeed || 0) + 0.3;
       showToast("🏔️ Trailblazing complete! Explorer class +30% speed");
     },
@@ -379,4 +379,4 @@ function initResearch() {
   if (!state.completedResearch) {
     state.completedResearch = [];
   }
-  }
+}
