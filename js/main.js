@@ -262,11 +262,12 @@ function checkTutorials() {
     }
   }
 
+  // Persistent Scout Post hint
   if (state.chambers.research.count >= 1 && state.chambers.scout.count === 0 && !state.tutorialsShown.scoutPersistent) {
     var el = document.getElementById('tutorial-toast');
     el.textContent = "🔍 Build a Scout Post to explore the world!";
     el.style.opacity = "1";
-    tutorialActive = null;
+    tutorialActive = null; // persist until scout built
     var scoutBtn = document.getElementById('build-scout');
     if (scoutBtn) scoutBtn.classList.add('hint-pulse');
   } else if (state.chambers.scout.count > 0 && !state.tutorialsShown.scoutPersistent) {
@@ -307,6 +308,7 @@ function checkZoneUnlocks() {
     if (trips >= cfg.tripReq && state.unlockedZonesList.indexOf(zid) === -1) {
       state.unlockedZonesList.push(zid);
       showToast("🗺️ " + cfg.label + " unlocked!");
+      // Apply zone unlock food bonus
       state.foodCap += 30;
       recalculateFoodCap();
       if (!newlyUnlocked) newlyUnlocked = zid;
@@ -399,6 +401,7 @@ function startGameLoop() {
     dt = Math.min(dt, 0.1);
     state.lastTime = now;
 
+    // ---- General updates (timers, basic state) ----
     try {
       state.lifetimeStats.totalPlayTime = (state.lifetimeStats.totalPlayTime || 0) + dt;
 
@@ -420,6 +423,7 @@ function startGameLoop() {
 
       if (state.earlyGameBoost > 0) { state.earlyGameBoost -= dt; if (state.earlyGameBoost <= 0) { state.earlyGameBoost = 0; updateEggLayTime(); } }
 
+      // Build Queue processing (with Builder class bonus)
       if (state.buildQueue.length > 0) {
         var currentBuild = state.buildQueue[0];
         var buildSpeed = 1 + (typeof getBuilderBuildSpeedBonus === 'function' ? getBuilderBuildSpeedBonus() : 0);
@@ -431,6 +435,7 @@ function startGameLoop() {
       }
     } catch(e) { console.error('General update error:', e); }
 
+    // ---- Rain update ----
     try {
       if (state.weatherActive && state.weatherType === "rain") {
         _lastRainUpdate += dt;
@@ -445,6 +450,7 @@ function startGameLoop() {
       }
     } catch(e) { console.error('Rain error:', e); }
 
+    // ---- Rally, wave, events, boss ----
     try {
       if (state.rallyActive) { state.rallyTimer -= dt; if (state.rallyTimer <= 0) deactivateRally(); }
       if (state.rallyCooldown > 0) { state.rallyCooldown -= dt; if (state.rallyCooldown <= 0) state.rallyCooldown = 0; }
@@ -458,6 +464,7 @@ function startGameLoop() {
       else { if (state.waveSpidersRemaining <= 0 && enemies.length === 0) endWave(); }
       updateWaveTimer();
 
+      // Event handling (reactive events first)
       if (!state.eventActive && !state.eventChoiceActive) {
         state.eventTimer -= dt;
         if (state.eventTimer <= 0) {
@@ -486,6 +493,7 @@ function startGameLoop() {
       }
       updateEventTimer();
 
+      // Boss logic
       if (!state.bossActive) {
         state.bossTimer -= dt;
         if (state.bossTimer <= 0) {
@@ -500,6 +508,7 @@ function startGameLoop() {
       updateBossTimer();
     } catch(e) { console.error('Wave/event/boss error:', e); }
 
+    // ---- Weather logic ----
     try {
       if (!state.weatherActive) {
         state.weatherTimer -= dt;
@@ -528,6 +537,7 @@ function startGameLoop() {
       }
     } catch(e) { console.error('Weather error:', e); }
 
+    // ---- Surge, soldier respawn ----
     try {
       if (!state.surgeActive) {
         state.surgeTimer -= dt;
@@ -541,20 +551,24 @@ function startGameLoop() {
       if (state.deadSoldiers > 0) { state.soldierRespawnTimer -= dt; if (state.soldierRespawnTimer <= 0) respawnSoldier(); }
     } catch(e) { console.error('Surge/respawn error:', e); }
 
+    // ---- Rival invasions ----
     try {
       updateRivalWarning(dt);
       updateRivalInvasion(dt);
       if (typeof updateRivalScheduler === 'function') updateRivalScheduler(dt);
     } catch(e) { console.error('Rival error:', e); }
 
+    // ---- Queen abilities ----
     try {
       updateQueenAbilityCooldowns(dt);
     } catch(e) { console.error('Queen ability error:', e); }
 
+    // ---- Class abilities ----
     try {
       updateClassAbilities(dt);
     } catch(e) { console.error('Class ability error:', e); }
 
+    // ---- Enemies (flee loop with safety checks) ----
     try {
       for (var i = enemies.length - 1; i >= 0; i--) {
         var sp = enemies[i];
@@ -582,6 +596,7 @@ function startGameLoop() {
       }
     } catch(e) { console.error('Enemy flee error:', e); }
 
+    // ---- Eggs ----
     try {
       eLC += dt;
       if (eLC >= state.eggLayTime && eggMs.length < 30) { eLC = 0; layEgg(); }
@@ -607,6 +622,7 @@ function startGameLoop() {
       }
     } catch(e) { console.error('Egg error:', e); }
 
+    // ---- Hatch FX ----
     try {
       for (var i = hatchFx.length - 1; i >= 0; i--) {
         var fx = hatchFx[i]; if (!fx || !fx.group) continue;
@@ -620,12 +636,14 @@ function startGameLoop() {
       }
     } catch(e) { console.error('HatchFX error:', e); }
 
+    // ---- Workers, soldiers, scouts ----
     try {
       for (var wi = 0; wi < workers.length; wi++) updateWorker(workers[wi], dt);
       for (var si = 0; si < soldiers.length; si++) updateSoldier(soldiers[si], dt);
       for (var sci = 0; sci < scouts.length; sci++) updateScout(scouts[sci], dt);
     } catch(e) { console.error('Worker/soldier/scout error:', e); }
 
+    // ---- Enemy movement (non-stealing) ----
     try {
       for (var ei = 0; ei < enemies.length; ei++) {
         var e = enemies[ei];
@@ -642,10 +660,12 @@ function startGameLoop() {
       }
     } catch(e) { console.error('Enemy movement error:', e); }
 
+    // ---- Combat (spiders only) ----
     try {
       combatUpdate(dt);
     } catch(e) { console.error('Combat error:', e); }
 
+    // ---- Health bars ----
     try {
       for (var si = 0; si < soldiers.length; si++) {
         var s = soldiers[si]; if (!s || !s.healthBar) continue;
@@ -660,6 +680,7 @@ function startGameLoop() {
       }
     } catch(e) { console.error('Health bar error:', e); }
 
+    // ---- Label visibility ----
     try {
       var cameraY = camera.position.y;
       var isUnderground = cameraY < CCY + 1.0;
@@ -674,6 +695,7 @@ function startGameLoop() {
       });
     } catch(e) { console.error('Label visibility error:', e); }
 
+    // ---- Research orbs ----
     try {
       if (researchChamberGroup && researchChamberGroup.children) {
         var time = performance.now() / 1000;
@@ -685,6 +707,7 @@ function startGameLoop() {
       }
     } catch(e) { console.error('Research orb error:', e); }
 
+    // ---- Lights ----
     try {
       cLP = Math.max(0, cLP - dt * 2.5);
       qgLight.intensity = Math.max(2.5, qgLight.intensity - dt * 3);
@@ -698,11 +721,13 @@ function startGameLoop() {
       }
     } catch(e) { console.error('Lights error:', e); }
 
+    // ---- Storage piles ----
     try {
       storageUpdateCounter += dt;
       if (storagePilesDirty && storageUpdateCounter > 30) { storageUpdateCounter = 0; storagePilesDirty = false; updateStoragePiles(); }
     } catch(e) { console.error('Storage piles error:', e); }
 
+    // ---- Achievements, rebalance, tutorials ----
     try {
       achCheckAccumulator += dt;
       if (achCheckAccumulator > 8) { achCheckAccumulator = 0; checkAchievements(); }
@@ -712,10 +737,12 @@ function startGameLoop() {
       if (tutorialCheckAccumulator > 5) { tutorialCheckAccumulator = 0; checkTutorials(); }
     } catch(e) { console.error('Achievement/tutorial error:', e); }
 
+    // ---- Goals refresh ----
     try {
       refreshGoals();
     } catch(e) { console.error('Goals error:', e); }
 
+    // ---- Camera, HUD, save ----
     try {
       if (typeof updateCameraAnim === 'function') updateCameraAnim(dt);
       if (typeof updateCamera === 'function') updateCamera();
@@ -727,6 +754,7 @@ function startGameLoop() {
       if (sC > 10) { sC = 0; state.lastSaveTime = Date.now(); saveGame(); }
     } catch(e) { console.error('Save error:', e); }
 
+    // ---- Render always runs ----
     try {
       renderer.render(scene, camera);
     } catch(e) { console.error('Render error:', e); }
@@ -764,7 +792,6 @@ function initGameSystems() {
   if (typeof initResearch === 'function') initResearch();
   if (typeof initRivalSystem === 'function') initRivalSystem();
   if (typeof initAntClasses === 'function') initAntClasses();
-  if (typeof setupGameListeners === 'function') setupGameListeners();
   gameSystemsReady = true;
 
   var bossName = document.getElementById('boss-name');
@@ -773,6 +800,100 @@ function initGameSystems() {
   if (bossBar) bossBar.style.display = 'none';
   var summonBtn = document.getElementById('summon-btn');
   if (summonBtn) summonBtn.style.display = 'none';
+}
+
+// Prestige function
+function performPrestige(ppGain) {
+  resetWeatherAndBoosts(); var pt = state.lifetimeStats.totalPlayTime + (performance.now() - state.lastTime) / 1000;
+  if (state.prestigeStartTime > 0) { var thisPrestigeTime = pt - state.prestigeStartTime; if (!state.lifetimeStats.fastestPrestige || thisPrestigeTime < state.lifetimeStats.fastestPrestige) state.lifetimeStats.fastestPrestige = thisPrestigeTime; }
+  state.prestigeCount++; state.prestigePoints += ppGain; state.lifetimeStats.totalPrestiges++; state.level = 1; state.xp = 0; state.xpToNext = Math.floor(40 * Math.pow(1.15, 0));
+  state.food = BAL.baseFoodCap; state.eggs = 0; state.workerCount = 4; state.soldierCount = 0; state.scoutCount = 0;
+  AudioManager.sfx.prestige(); triggerShake(8, 0.8);
+  state.chambers = { foodStorage: { count: 0, bonusCap: 0 }, nursery: { count: 0, hatchReduction: 0 }, soldier: { count: 0 }, research: { count: 0 }, scout: { count: 0 }, royal: { count: 0 } };
+  state.upgrades = { soldierDamage: 0, workerSpeed: 0, eggLayTime: 0, foodCap: 0 }; state.expansionTrips = 0; state.unlockedZones = 0; state.virtualWorkers = 0; state.earlyGameBoost = BAL.earlyGameBoostDuration;
+  while (workers.length > 0) { var w = workers.pop(); if (w && w.mesh) { disposeMesh(w.mesh); scene.remove(w.mesh); } }
+  while (soldiers.length > 0) { var s = soldiers.pop(); if (s && s.mesh) { disposeMesh(s.mesh); scene.remove(s.mesh); } if (s && s.guardMesh) { disposeMesh(s.guardMesh); scene.remove(s.guardMesh); } }
+  while (scouts.length > 0) { var sc = scouts.pop(); if (sc && sc.mesh) { disposeMesh(sc.mesh); scene.remove(sc.mesh); } }
+  while (enemies.length > 0) { var e = enemies.pop(); if (e && e.mesh) { disposeMesh(e.mesh); scene.remove(e.mesh); } }
+  while (eggMs.length > 0) { var em = eggMs.pop(); if (em && em.mesh) { disposeMesh(em.mesh); scene.remove(em.mesh); } }
+  while (storageChambers.length > 0) { var ch = storageChambers.pop(); if (ch) { disposeMesh(ch); scene.remove(ch); } }
+  while (nurseryChambers.length > 0) { var ch = nurseryChambers.pop(); if (ch) { disposeMesh(ch); scene.remove(ch); } }
+  while (soldierChambers.length > 0) { var ch = soldierChambers.pop(); if (ch && ch.mesh) { disposeMesh(ch.mesh); scene.remove(ch.mesh); } }
+  while (researchChambers.length > 0) { var ch = researchChambers.pop(); if (ch && ch.mesh) { disposeMesh(ch.mesh); scene.remove(ch.mesh); } }
+  while (scoutChambers.length > 0) { var ch = scoutChambers.pop(); if (ch && ch.mesh) { disposeMesh(ch.mesh); scene.remove(ch.mesh); } }
+  while (storagePiles.length > 0) { var sp = storagePiles.pop(); if (sp) { disposeMesh(sp); scene.remove(sp); } }
+  while (nurseryEggClusters.length > 0) { var nc = nurseryEggClusters.pop(); if (nc) { disposeMesh(nc); scene.remove(nc); } }
+  barracksSoldiers = []; if (researchChamberGroup) { disposeMesh(researchChamberGroup); scene.remove(researchChamberGroup); researchChamberGroup = null; }
+  if (state.currentBoss) { disposeMesh(state.currentBoss.mesh); scene.remove(state.currentBoss.mesh); state.currentBoss = null; }
+  state.bossActive = false; var bossName = document.getElementById('boss-name'); if (bossName) bossName.style.display = 'none'; var bossBar = document.getElementById('boss-health-bar'); if (bossBar) bossBar.style.display = 'none';
+  for (var i = 0; i < PRESTIGE_MILESTONES.length; i++) { var m = PRESTIGE_MILESTONES[i]; if (state.prestigeCount >= m.prestige) m.effect(); }
+  rebuildAllChambers();
+  if (state.ascensionUpgrades.elderWisdom > 0 && state.chambers.research.count === 0) { state.chambers.research.count = 1; var chX = getNextResearchX(); researchChambers.push({ x: chX, mesh: makeChamber(chX, CCY, CZ, 3, 2, 4, 0x3a3a5a) }); makeLabel("🔬 Research", chX, CCY + 1.4, CZ, 256, 64, true); researchChamberGroup = new THREE.Group(); researchChamberGroup.position.set(chX, CCY + 1.8, CZ); var orbMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xff8800, emissiveIntensity: 0.8 }); for (var i = 0; i < 5; i++) { var orb = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6), orbMat); var angle = (i / 5) * Math.PI * 2; orb.position.set(Math.cos(angle) * 0.6, 0, Math.sin(angle) * 0.6); researchChamberGroup.add(orb); } scene.add(researchChamberGroup); }
+  for (var wi = 0; wi < state.workerCount; wi++) { var nw = createWorker(false); if (nw) workers.push(nw); }
+  buildQueenChamberWalls(); recalculateHatchTime(); updateEggLayTime(); recalculateFoodCap();
+  state.bossTimer = BAL.bossIntervalMin + Math.random() * (BAL.bossIntervalMax - BAL.bossIntervalMin);
+  state.prestigeStartTime = state.lifetimeStats.totalPlayTime; state.prestigeGoal = null; state.prestigeGoalSelected = false; state.buildQueue = [];
+  // Reset first‑time flags
+  if (typeof resetFirstScoutFlag === 'function') resetFirstScoutFlag();
+  if (typeof resetFirstBossFlag === 'function') resetFirstBossFlag();
+  emitParticles(_v3.set(TX, GTY + 1.5, TCZ), 40, 0xff44ff, 0.1, 2.0, 1.0);
+  showToast("✨ Prestige complete! Gained " + ppGain + " PP"); refreshHUD(); checkAchievements(); saveGame();
+}
+
+// Ascension function
+function performAscension(apGain) {
+  resetWeatherAndBoosts(); var ascCount = state.ascensionCount + apGain; var ascPoints = state.ascensionPoints + apGain; var ascUpgrades = JSON.parse(JSON.stringify(state.ascensionUpgrades));
+  state.colonyName = "Colony " + (currentSlot + 1); state.food = BAL.baseFoodCap; state.gems = 0; state.foodCap = BAL.baseFoodCap;
+  state.level = 1; state.xp = 0; state.xpToNext = Math.floor(40 * Math.pow(1.15, 0)); state.eggs = 0; state.workerCount = 4; state.soldierCount = 0; state.scoutCount = 0;
+  state.chambers = { foodStorage: { count: 0, bonusCap: 0 }, nursery: { count: 0, hatchReduction: 0 }, soldier: { count: 0 }, research: { count: 0 }, scout: { count: 0 }, royal: { count: 0 } };
+  state.upgrades = { soldierDamage: 0, workerSpeed: 0, eggLayTime: 0, foodCap: 0 }; state.gemUpgrades = state.gemUpgrades || {};
+  state.expansionTrips = 0; state.unlockedZones = 0; state.rallyActive = false; state.rallyTimer = 0; state.rallyCooldown = 0;
+  state.waveActive = false; state.waveTimer = 35; state.surgeActive = false; state.surgeTimer = 60 + Math.random() * 30;
+  state.eventActive = false; state.eventTimer = 35 + Math.random() * 25; state.weatherActive = false; state.weatherTimer = 70 + Math.random() * 40;
+  state.isNight = false; state.rareAntCount = 0; state.nestEvolutionLevel = 0; state.totalHatched = 0; state.totalKills = 0; state.totalGemsEarned = 0;
+  state.achievementsClaimed = state.achievementsClaimed || {}; state.dailyStreak = state.dailyStreak || 0; state.lastLoginDay = state.lastLoginDay || ""; state.earlyGameBoost = BAL.earlyGameBoostDuration;
+  state.survivedNight = 0; state.rallyUses = 0; state.surgesCollected = 0; state.virtualWorkers = 0; state.evolution = { worker: 0, soldier: 0, scout: 0 };
+  state.bossActive = false; state.bossTimer = BAL.bossIntervalMin + Math.random() * (BAL.bossIntervalMax - BAL.bossIntervalMin);
+  state.bossKills = 0; state.bossType = null; state.currentBoss = null; state.prestigeCount = 0; state.prestigePoints = 0;
+  state.prestigeUpgrades = { ppFood: 0, ppSpeed: 0, ppHatch: 0, ppCap: 0, ppGem: 0, ppBoss: 0 }; state.prestigeFoodBonus = 0;
+  state.currentZone = "forest"; state.unlockedZonesList = ["forest"]; state.speedBoostTimer = 0; state.luckyHourTimer = 0; state.defenseBannerTimer = 0;
+  state.beetleKills = 0; state.waspKills = 0; state.tutorialsShown = {}; state.queenClicks = 0; state.prestigeStartTime = 0; state.prestigeStartLevel = 0;
+  state.dailyChallengeDate = ""; state.dailyChallengeIds = []; state.dailyProgress = { hatch5: 0, kill8: 0, food300: 0, rally2: 0, boss1: 0, zone1: 0, upgrade1: 0, build1: 0, rare1: 0, night1: 0 };
+  state.lifetimeStats = { totalFood: 0, totalHatched: 0, totalKills: 0, totalBossKills: 0, totalPrestiges: 0, totalPlayTime: 0, totalGems: 0, totalRallies: 0, totalSurges: 0, totalNights: 0, fastestPrestige: 0 };
+  state.ascensionCount = ascCount; state.ascensionPoints = ascPoints; state.ascensionUpgrades = ascUpgrades; state.hasAscended = true;
+  state.caveBossKills = 0; state.swampBossKills = 0; state.mountainBossKills = 0; state.buildQueue = []; state.prestigeGoal = null; state.prestigeGoalSelected = false;
+  state.eventChoices = []; state.eventChoiceActive = false; state.researchBonuses = { foodPerTrip: 0, soldierHealth: 0, soldierDamage: 0, discoveryChance: 0, zoneTripReduction: 0, eggLayReduction: 0, scoutSpeed: 0, foodCap: 0, poisonResist: false, queensWrathUnlocked: false, pheromoneShieldUnlocked: false };
+  state.completedResearch = []; state.queensWrathActive = false; state.queensWrathTimer = 0; state.queenProtected = false; state._royalGroups = [];
+  clearAllMeshes(); buildQueenChamberWalls(); rebuildAllChambers();
+  for (var wi = 0; wi < state.workerCount; wi++) { var nw = createWorker(false); if (nw) workers.push(nw); }
+  recalculateHatchTime(); updateEggLayTime(); recalculateFoodCap();
+  state.bossTimer = BAL.bossIntervalMin + Math.random() * (BAL.bossIntervalMax - BAL.bossIntervalMin);
+  // Reset first‑time flags
+  if (typeof resetFirstScoutFlag === 'function') resetFirstScoutFlag();
+  if (typeof resetFirstBossFlag === 'function') resetFirstBossFlag();
+  AudioManager.sfx.ascend(); emitParticles(_v3.set(TX, GTY + 1.5, TCZ), 60, 0xffaa00, 0.12, 2.5, 1.2);
+  showToast("⬆️ Ascension complete! +1 AP, permanent multipliers active!"); refreshHUD(); checkAchievements(); saveGame();
+  var cfg = ZONE_CONFIG.forest; scene.background = new THREE.Color(cfg.bg); scene.fog = new THREE.Fog(cfg.fog, 20, 80);
+  var zoneDisp = document.getElementById('zone-display'); if (zoneDisp) zoneDisp.textContent = cfg.label;
+}
+
+function clearAllMeshes() {
+  while (workers.length > 0) { var w = workers.pop(); if (w && w.mesh) { disposeMesh(w.mesh); scene.remove(w.mesh); } }
+  while (soldiers.length > 0) { var s = soldiers.pop(); if (s && s.mesh) { disposeMesh(s.mesh); scene.remove(s.mesh); } if (s && s.guardMesh) { disposeMesh(s.guardMesh); scene.remove(s.guardMesh); } }
+  while (scouts.length > 0) { var sc = scouts.pop(); if (sc && sc.mesh) { disposeMesh(sc.mesh); scene.remove(sc.mesh); } }
+  while (enemies.length > 0) { var e = enemies.pop(); if (e && e.mesh) { disposeMesh(e.mesh); scene.remove(e.mesh); } }
+  while (eggMs.length > 0) { var em = eggMs.pop(); if (em && em.mesh) { disposeMesh(em.mesh); scene.remove(em.mesh); } }
+  while (storageChambers.length > 0) { var ch = storageChambers.pop(); if (ch) { disposeMesh(ch); scene.remove(ch); } }
+  while (nurseryChambers.length > 0) { var ch = nurseryChambers.pop(); if (ch) { disposeMesh(ch); scene.remove(ch); } }
+  while (soldierChambers.length > 0) { var ch = soldierChambers.pop(); if (ch && ch.mesh) { disposeMesh(ch.mesh); scene.remove(ch.mesh); } }
+  while (researchChambers.length > 0) { var ch = researchChambers.pop(); if (ch && ch.mesh) { disposeMesh(ch.mesh); scene.remove(ch.mesh); } }
+  while (scoutChambers.length > 0) { var ch = scoutChambers.pop(); if (ch && ch.mesh) { disposeMesh(ch.mesh); scene.remove(ch.mesh); } }
+  while (storagePiles.length > 0) { var sp = storagePiles.pop(); if (sp) { disposeMesh(sp); scene.remove(sp); } }
+  while (nurseryEggClusters.length > 0) { var nc = nurseryEggClusters.pop(); if (nc) { disposeMesh(nc); scene.remove(nc); } }
+  if (researchChamberGroup) { disposeMesh(researchChamberGroup); scene.remove(researchChamberGroup); researchChamberGroup = null; }
+  if (state.currentBoss) { disposeMesh(state.currentBoss.mesh); scene.remove(state.currentBoss.mesh); state.currentBoss = null; }
+  var bossName = document.getElementById('boss-name'); if (bossName) bossName.style.display = 'none';
+  var bossBar = document.getElementById('boss-health-bar'); if (bossBar) bossBar.style.display = 'none';
 }
 
 initThreeJS();
