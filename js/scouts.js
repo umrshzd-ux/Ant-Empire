@@ -180,4 +180,4 @@ function clearAllScouts() {
     }
   }
   scouts = [];
-}
+        }
