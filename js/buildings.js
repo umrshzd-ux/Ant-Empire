@@ -335,4 +335,4 @@ function getBuilderBuildSpeedBonus() {
     }
   }
   return 0;
-    }
+}
