@@ -40,13 +40,14 @@ function closeAllModals() {
   });
 }
 
-// ---- TOAST SYSTEM ----
+// ---- TOAST SYSTEM (with optional emoji) ----
 var toastQueue = [], toastActive = false;
 function processToastQueue() {
   if (!toastEl) return;
   if (toastActive || toastQueue.length === 0) return;
   toastActive = true;
-  var msg = toastQueue.shift();
+  var item = toastQueue.shift();
+  var msg = item.emoji ? item.emoji + " " + item.text : item.text;
   toastEl.textContent = msg;
   toastEl.style.opacity = "1";
   toastEl.style.transition = "none";
@@ -54,7 +55,15 @@ function processToastQueue() {
   toastEl.style.transition = "opacity 0.3s ease";
   setTimeout(function() { toastEl.style.opacity = "0"; toastActive = false; setTimeout(processToastQueue, 300); }, 2200);
 }
-function showToast(msg) { toastQueue.push(msg); processToastQueue(); }
+// Updated showToast: first arg can be string or {text, emoji}
+function showToast(msg, emoji) {
+  if (typeof msg === 'string') {
+    toastQueue.push({ text: msg, emoji: emoji || null });
+  } else {
+    toastQueue.push(msg);
+  }
+  processToastQueue();
+}
 
 // ---- TIER COLORS ----
 var TIER_COLORS = {
@@ -279,7 +288,7 @@ function checkAchievements() {
       state.gems += nextTier.reward;
       state.totalGemsEarned += nextTier.reward;
       showAchievementToast(ach, claimedTier + 1);
-      showToast("🏆 " + ach.name + " Tier " + (claimedTier + 1) + "! +" + nextTier.reward + "💎");
+      showToast({ text: "🏆 " + ach.name + " Tier " + (claimedTier + 1) + "! +" + nextTier.reward + "💎", emoji: ach.icon });
       AudioManager.sfx.achievement();
     }
   }
@@ -998,4 +1007,4 @@ function buyUpgrade(type) {
   showToast(msg);
   refreshUpgradeUI();
   refreshHUD();
-                                                           }
+}
