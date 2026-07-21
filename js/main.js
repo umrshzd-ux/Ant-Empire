@@ -963,6 +963,7 @@ function startGameLoop() {
 function initGameSystems() {
   if (gameSystemsReady) { clearAllMeshes(); gameSystemsReady = false; }
   buildTerrain();
+  initQueen();  // <-- moved here so scene already exists
   buildQueenChamberWalls();
   initFoodStations();
   initMushrooms();
