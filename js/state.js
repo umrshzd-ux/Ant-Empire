@@ -137,7 +137,7 @@ var state = {
   territoryScoutQueue: [],
 
   // Legendary bosses
-  legendaryDefeated: []   // list of zone keys (e.g., "forest") for defeated legendaries
+  legendaryDefeated: []
 };
 var queenScale = BAL.queenBaseScale;
 state.lastTime = performance.now();
@@ -225,8 +225,7 @@ function resetStateToDefault(slot) {
   state.territoryUnlockCost = 100;
   state.territoryPassiveTimer = 0;
   state.territoryScoutQueue = [];
-  // Legendary reset (kept across prestiges, so NOT reset here; but reset on ascension)
-  // state.legendaryDefeated = []; // comment: kept across prestiges
+  // Legendary kept across prestiges, no reset here.
   recalculateHatchTime();
   updateEggLayTime();
   recalculateFoodCap();
@@ -266,6 +265,8 @@ function updateEggLayTime() {
   var blessing = state.gemUpgrades.queenBless ? 5 : 0;
   var baseTime = state.earlyGameBoost > 0 ? BAL.baseEggLayTime * BAL.earlyGameEggMultiplier : BAL.baseEggLayTime;
   if (state.researchBonuses.eggLayReduction > 0) baseTime *= (1 - state.researchBonuses.eggLayReduction);
+  // Legendary Swamp bonus: -10% egg lay time
+  if (state.gemUpgrades.legendarySwamp) baseTime *= 0.90;
   if (state.food / state.foodCap > BAL.foodHighThreshold) { baseTime *= (1 - BAL.foodTensionHatchBoost); }
   state.eggLayTime = Math.max(2, baseTime + extra * BAL.eggLayTimePerWorker - state.upgrades.eggLayTime * UPGRADES.eggLayTime.effect - blessing);
 }
@@ -274,7 +275,12 @@ function recalculateFoodCap() {
   if (state.gemUpgrades.deepStorage) state.foodCap += 300;
   if (state.researchBonuses && state.researchBonuses.foodCap) state.foodCap += state.researchBonuses.foodCap;
   if (state.unlockedZonesList) state.foodCap += state.unlockedZonesList.length * 30;
-  if (state.territoriesClaimed) state.foodCap += state.territoriesClaimed.length * 50;
+  if (state.territoriesClaimed) {
+    var terrCapBonus = state.territoriesClaimed.length * 50;
+    // Legendary Deep Woods: +50 per territory
+    if (state.gemUpgrades.legendaryDeepWoods) terrCapBonus += state.territoriesClaimed.length * 50;
+    state.foodCap += terrCapBonus;
+  }
 }
 function getUpgradeCost(type) {
   var upg = UPGRADES[type];
@@ -292,6 +298,8 @@ function getEffectiveFoodPerTrip() {
   if (state.gemUpgrades.goldenSkin) base += 1;
   if (state.evolution.worker >= 1) base += EVOLUTION_TREE.worker.tiers[0].effect.foodBonus;
   if (state.researchBonuses.foodPerTrip > 0) base += state.researchBonuses.foodPerTrip;
+  // Legendary Forest: +5% food production
+  if (state.gemUpgrades.legendaryForest) base *= 1.05;
   var mult = Math.pow(BAL.ascensionMultiplierFood, state.ascensionCount);
   return base * mult;
 }
@@ -312,6 +320,8 @@ function getEffectiveScoutSpeed() {
   if (state.prestigeUpgrades.ppSpeed) base *= 1 + state.prestigeUpgrades.ppSpeed * 0.1;
   if (state.ascensionUpgrades.goldenQueen > 0) base *= 2;
   if (state.researchBonuses.scoutSpeed > 0) base += state.researchBonuses.scoutSpeed;
+  // Legendary Riverside: +20% scout speed
+  if (state.gemUpgrades.legendaryRiverside) base *= 1.20;
   return base;
 }
 function getEffectiveSoldierDamage() {
@@ -319,6 +329,8 @@ function getEffectiveSoldierDamage() {
   if (state.gemUpgrades.antStrength) base += 4;
   if (state.evolution.soldier >= 2) base += EVOLUTION_TREE.soldier.tiers[1].effect.damageBonus;
   if (state.researchBonuses.soldierDamage > 0) base += state.researchBonuses.soldierDamage;
+  // Legendary Forest Edge: +10% soldier damage
+  if (state.gemUpgrades.legendaryForestEdge) base *= 1.10;
   var mult = Math.pow(BAL.ascensionMultiplierDamage, state.ascensionCount);
   return base * mult;
 }
@@ -327,6 +339,8 @@ function getEffectiveSoldierMaxHealth() {
   if (state.gemUpgrades.soldierArmor) base += 30;
   if (state.evolution.soldier >= 1) base += EVOLUTION_TREE.soldier.tiers[0].effect.healthBonus;
   if (state.researchBonuses.soldierHealth > 0) base += state.researchBonuses.soldierHealth;
+  // Legendary Cave: +30 soldier health
+  if (state.gemUpgrades.legendaryCave) base += 30;
   return base;
 }
 function getEffectiveGuardRadius() {
@@ -490,4 +504,4 @@ function addGems(amount) {
   state.totalGemsEarned += amount;
   state.lifetimeStats.totalGems = (state.lifetimeStats.totalGems || 0) + amount;
   showToast("+" + amount + "💎");
-                         }
+  }
