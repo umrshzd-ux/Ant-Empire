@@ -45,13 +45,8 @@ function addLabel(parent, text, yOff, undergroundOnly) { var l = createLabelSpri
 
 var qMesh;
 function initQueen() { qMesh = buildAntMesh(queenScale, 0x8a4a1a); qMesh.position.set(TX, NP.y, CZ); scene.add(qMesh); addLabel(qMesh, "👑 Queen", 1.3, true); qMesh.userData = { idleTime: 0, isQueen: true }; }
-// initQueen() call REMOVED – it will be called from main.js after scene is ready
 
-renderer.domElement.addEventListener('click', function(e) {
-  if (!qMesh) return; var mouse = new THREE.Vector2(); mouse.x = (e.clientX / window.innerWidth) * 2 - 1; mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-  raycaster.setFromCamera(mouse, camera); var intersects = raycaster.intersectObject(qMesh, true);
-  if (intersects.length > 0) { state.queenClicks++; emitParticles(_v3.copy(qMesh.position), 5, 0xff44ff, 0.03, 0.5, 0.4); showToast("👑 Queen clicked! (" + state.queenClicks + ")"); checkAchievements(); }
-});
+// Queen click handler has been MOVED to main.js to avoid referencing renderer before it exists.
 
 var workers = []; var nWI = 0;
 function getWorkerVisualScale() { return BAL.workerBaseScale + state.upgrades.workerSpeed * BAL.workerScalePerUpgrade; }
