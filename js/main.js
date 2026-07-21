@@ -563,9 +563,25 @@ function buyAscensionUpgrade(id) {
   saveGame();
 }
 
-// ----- Main loop (with all new systems integrated) -----
+// ----- Main loop (with dynamic events) -----
 var eLC = 0, sC = 0, cLP = 0, storageUpdateCounter = 0, achCheckAccumulator = 0, workerRebalanceAccumulator = 0, tutorialCheckAccumulator = 0, animFrameId = null;
 var vwFoodAccum = 0;
+
+// Dynamic event helper
+function triggerDynamicEvent() {
+  var available = [];
+  for (var i = 0; i < DYNAMIC_EVENTS.length; i++) {
+    if (DYNAMIC_EVENTS[i].condition()) {
+      available.push(DYNAMIC_EVENTS[i]);
+    }
+  }
+  if (available.length > 0) {
+    var chosen = available[Math.floor(Math.random() * available.length)];
+    chosen.action();
+    showToast(chosen.emoji + " " + chosen.name + "!");
+    AudioManager.sfx.achievement(); // a distinct sound
+  }
+}
 
 function startGameLoop() {
   gameLoopActive = true;
@@ -623,6 +639,13 @@ function startGameLoop() {
           constructBuilding(currentBuild.type);
           state.buildQueue.shift();
         }
+      }
+
+      // Dynamic event scheduler
+      state.dynamicEventTimer -= dt;
+      if (state.dynamicEventTimer <= 0) {
+        triggerDynamicEvent();
+        state.dynamicEventTimer = 300 + Math.random() * 600;
       }
     } catch(e) { console.error('General update error:', e); }
 
@@ -995,7 +1018,7 @@ function initGameSystems() {
   if (summonBtn) summonBtn.style.display = 'none';
 }
 
-// Prestige function (with Queen's Legacy, legendary kept)
+// Prestige function (with Queen's Legacy, legendary kept, dynamic timer reset)
 function performPrestige(ppGain) {
   resetWeatherAndBoosts(); var pt = state.lifetimeStats.totalPlayTime + (performance.now() - state.lastTime) / 1000;
   if (state.prestigeStartTime > 0) { var thisPrestigeTime = pt - state.prestigeStartTime; if (!state.lifetimeStats.fastestPrestige || thisPrestigeTime < state.lifetimeStats.fastestPrestige) state.lifetimeStats.fastestPrestige = thisPrestigeTime; }
@@ -1033,6 +1056,7 @@ function performPrestige(ppGain) {
   state.territoryUnlockCost = 100;
   state.territoryPassiveTimer = 0;
   state.territoryScoutQueue = [];
+  state.dynamicEventTimer = 300 + Math.random() * 600;
   // legendaryDefeated is NOT reset here (kept across prestiges)
   if (typeof resetFirstScoutFlag === 'function') resetFirstScoutFlag();
   if (typeof resetFirstBossFlag === 'function') resetFirstBossFlag();
@@ -1041,7 +1065,7 @@ function performPrestige(ppGain) {
   showToast("✨ Prestige complete! Gained " + ppGain + " PP"); refreshHUD(); checkAchievements(); saveGame();
 }
 
-// Ascension function (resets legendary)
+// Ascension function (resets legendary and dynamic timer)
 function performAscension(apGain) {
   resetWeatherAndBoosts(); var ascCount = state.ascensionCount + apGain; var ascPoints = state.ascensionPoints + apGain; var ascUpgrades = JSON.parse(JSON.stringify(state.ascensionUpgrades));
   state.colonyName = "Colony " + (currentSlot + 1); state.food = BAL.baseFoodCap; state.gems = 0; state.foodCap = BAL.baseFoodCap;
@@ -1069,8 +1093,8 @@ function performAscension(apGain) {
   state.territoryUnlockCost = 100;
   state.territoryPassiveTimer = 0;
   state.territoryScoutQueue = [];
-  // Reset legendary progress on ascension
   state.legendaryDefeated = [];
+  state.dynamicEventTimer = 300 + Math.random() * 600;
   clearAllMeshes(); buildQueenChamberWalls(); rebuildAllChambers();
   for (var wi = 0; wi < state.workerCount; wi++) { var nw = createWorker(false); if (nw) workers.push(nw); }
   recalculateHatchTime(); updateEggLayTime(); recalculateFoodCap();
@@ -1104,4 +1128,3 @@ function clearAllMeshes() {
 }
 
 initThreeJS();
-    
