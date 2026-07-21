@@ -1,10 +1,41 @@
-// ===== SPIDER CREATION, MOVEMENT, STEALING =====
+// ===== SPIDER CREATION, MOVEMENT, STEALING, VISUAL FEEDBACK =====
 
 var enemies = [];
 
-function createSpider() {
+// ---- Flash a mesh red when hit (visual feedback) ----
+function flashMesh(mesh, color, duration) {
+  if (!mesh) return;
+  color = color || 0xff0000;
+  duration = duration || 0.1;
+  mesh.traverse(function(child) {
+    if (child.isMesh && child.material && child.material.emissive) {
+      // Store original emissive if not already stored
+      if (child.userData._origEmissive === undefined) {
+        child.userData._origEmissive = child.material.emissive ? child.material.emissive.getHex() : 0;
+      }
+      child.material.emissive = new THREE.Color(color);
+      child.material.emissiveIntensity = 1.5;
+    }
+  });
+  // Clear any existing timeout
+  if (mesh.userData._flashTimeout) clearTimeout(mesh.userData._flashTimeout);
+  mesh.userData._flashTimeout = setTimeout(function() {
+    if (!mesh || !mesh.traverse) return;
+    mesh.traverse(function(child) {
+      if (child.isMesh && child.material && child.material.emissive && child.userData._origEmissive !== undefined) {
+        child.material.emissive.setHex(child.userData._origEmissive);
+        child.material.emissiveIntensity = 0;
+        delete child.userData._origEmissive;
+      }
+    });
+    delete mesh.userData._flashTimeout;
+  }, duration * 1000);
+}
+
+// ---- Create a custom enemy (used by dynamic events) ----
+function createCustomEnemy(bodyColor, legColor, health, damage, speed) {
   var g = new THREE.Group();
-  var bm = new THREE.MeshStandardMaterial({ color: 0x4a1010, roughness: 0.3, metalness: 0.2 });
+  var bm = new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.3, metalness: 0.2 });
   var ab = new THREE.Mesh(new THREE.SphereGeometry(0.45, 8, 8), bm);
   ab.position.set(0, 0.2, -0.25);
   ab.scale.set(1, 0.8, 1.3);
@@ -24,7 +55,7 @@ function createSpider() {
     e.position.set(sd, 0.3, 0.6);
     g.add(e);
   });
-  var lm = new THREE.MeshStandardMaterial({ color: 0x2a1010, roughness: 0.5 });
+  var lm = new THREE.MeshStandardMaterial({ color: legColor, roughness: 0.5 });
   [
     { x: 0.28, z: 0.25, a: 0.6 }, { x: -0.28, z: 0.25, a: -0.6 },
     { x: 0.25, z: 0.05, a: 0.5 }, { x: -0.25, z: 0.05, a: -0.5 },
@@ -49,20 +80,49 @@ function createSpider() {
   scene.add(g);
 
   var hb = createHealthBar(g, 80, 10, 1.3);
-  var sp = {
+  var enemy = {
     mesh: g,
-    health: BAL.spiderHealth,
-    maxHealth: BAL.spiderHealth,
-    speed: BAL.spiderSpeed + Math.random() * 0.15,
+    health: health,
+    maxHealth: health,
+    speed: speed + Math.random() * 0.15,
     healthBar: hb,
     target: ER.clone(),
     attackCooldown: 0,
     stealing: false,
     fleeTarget: null,
-    _stuckTimer: 0  // safety for stuck spiders
+    _stuckTimer: 0,
+    damage: damage,
+    isCustom: true
   };
-  enemies.push(sp);
-  return sp;
+  enemies.push(enemy);
+  return enemy;
+}
+
+function createSpider() {
+  return createCustomEnemy(0x4a1010, 0x2a1010, BAL.spiderHealth, BAL.spiderDamage, BAL.spiderSpeed);
+}
+
+// ---- Parameterised wave (for dynamic events) ----
+function startWaveWithParams(minSpiders, maxSpiders, spiderHp, spiderDmg) {
+  // Store original BAL values
+  var origMin = BAL.waveSpidersMin;
+  var origMax = BAL.waveSpidersMax;
+  var origHp = BAL.spiderHealth;
+  var origDmg = BAL.spiderDamage;
+  // Override
+  BAL.waveSpidersMin = minSpiders;
+  BAL.waveSpidersMax = maxSpiders;
+  BAL.spiderHealth = spiderHp;
+  BAL.spiderDamage = spiderDmg;
+  // Start the wave
+  startWave();
+  // Restore after a short delay (after all spiders are spawned)
+  setTimeout(function() {
+    BAL.waveSpidersMin = origMin;
+    BAL.waveSpidersMax = origMax;
+    BAL.spiderHealth = origHp;
+    BAL.spiderDamage = origDmg;
+  }, (maxSpiders + 1) * 400 + 100);
 }
 
 function killSpider(sp) {
@@ -77,7 +137,6 @@ function killSpider(sp) {
   state.lifetimeStats.totalKills++;
   AudioManager.sfx.spiderDeath();
   updateDailyProgress('kill8', 1);
-  // Decrement wave spider count to allow wave to end
   if (state.waveActive && state.waveSpidersRemaining > 0) {
     state.waveSpidersRemaining--;
   }
