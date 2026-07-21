@@ -159,8 +159,12 @@ function useQueenAbility(abilityId) {
   // Execute ability
   ability.action();
 
-  // Set cooldown
-  queenAbilityCooldowns[abilityId] = ability.cooldown;
+  // Set cooldown – apply Eternal Inspiration prestige bonus if active
+  var effectiveCooldown = ability.cooldown;
+  if (state._royalCooldownReduction) {
+    effectiveCooldown = Math.floor(ability.cooldown * 0.8);
+  }
+  queenAbilityCooldowns[abilityId] = effectiveCooldown;
 
   // Update UI
   updateQueenAbilityButtons();
@@ -228,11 +232,14 @@ function updateQueenAbilityButtons() {
     var cd = queenAbilityCooldowns[abilityIds[i]];
     var onCooldown = cd > 0;
 
+    // The cooldown stored already reflects any reduction, so use the ability's original for display reference
+    var displayedMaxCd = state._royalCooldownReduction ? Math.floor(ab.cooldown * 0.8) : ab.cooldown;
+
     // Small circle button
     var size = 44; // px
     var bg = onCooldown ? 'rgba(80,80,80,0.85)' : 'rgba(180,120,30,0.85)';
     var ringColor = onCooldown ? '#888' : '#ffd700';
-    var cdPercent = onCooldown ? (cd / ab.cooldown) : 0;
+    var cdPercent = onCooldown ? (cd / displayedMaxCd) : 0;
     var ringStyle = '';
     if (onCooldown) {
       var angle = 360 * (1 - cdPercent);
