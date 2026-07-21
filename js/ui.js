@@ -56,19 +56,37 @@ function processToastQueue() {
 }
 function showToast(msg) { toastQueue.push(msg); processToastQueue(); }
 
+// ---- TIER COLORS ----
+var TIER_COLORS = {
+  bronze: '#cd7f32',
+  silver: '#c0c0c0',
+  gold: '#ffd700',
+  diamond: '#b9f2ff',
+  platinum: '#e5e4e2'
+};
+
+// ---- ACHIEVEMENT TOAST (enhanced) ----
 var achToastTimeout = null;
-function showAchievementToast(achName, achIcon, tierDesc, reward) {
+function showAchievementToast(ach, newTier) {
   var at = document.getElementById('achievement-toast');
   if (!at) return;
-  var iconEl = document.getElementById('ach-toast-icon');
-  var titleEl = document.getElementById('ach-toast-title');
-  var descEl = document.getElementById('ach-toast-desc');
-  if (iconEl) iconEl.textContent = achIcon;
-  if (titleEl) titleEl.textContent = achName;
-  if (descEl) descEl.textContent = tierDesc + " — 💎 +" + reward;
+  var totalTiers = ach.tiers.length;
+  var progress = newTier / totalTiers;
+  var tierColor = TIER_COLORS[ach.tier] || '#ffd27a';
+  at.style.borderColor = tierColor;
+  at.style.boxShadow = '0 20px 50px rgba(0,0,0,0.8), 0 0 30px ' + tierColor;
+  var html = '';
+  html += '<div style="font-size:24px;">' + ach.icon + '</div>';
+  html += '<div style="font-size:18px; font-weight:900; color:' + tierColor + ';">' + ach.name + '</div>';
+  html += '<div style="font-size:14px; color:#f3e3c4;">' + ach.tiers[newTier-1].desc + '</div>';
+  html += '<div style="font-size:14px; color:#ffd27a;">💎 +' + ach.tiers[newTier-1].reward + ' gems</div>';
+  html += '<div style="width:100%; height:8px; background:rgba(255,255,255,0.1); border-radius:4px; margin-top:6px;">' +
+          '<div style="height:100%; width:' + (progress*100) + '%; background:' + tierColor + '; border-radius:4px;"></div></div>';
+  html += '<div style="font-size:11px; color:#aaa;">Tier ' + newTier + '/' + totalTiers + '</div>';
+  at.innerHTML = html;
   at.style.opacity = "1";
   if (achToastTimeout) clearTimeout(achToastTimeout);
-  achToastTimeout = setTimeout(function() { at.style.opacity = "0"; achToastTimeout = null; }, 3500);
+  achToastTimeout = setTimeout(function() { at.style.opacity = "0"; achToastTimeout = null; }, 4000);
 }
 
 function spawnFloater(text, sx, sy, color) {
@@ -246,7 +264,7 @@ window.selectPrestigeGoal = function(id) {
 };
 
 // =============================================
-//  ACHIEVEMENTS
+//  ACHIEVEMENTS (with enhanced visuals)
 // =============================================
 function checkAchievements() {
   for (var i = 0; i < ACHIEVEMENTS.length; i++) {
@@ -259,7 +277,7 @@ function checkAchievements() {
       state.achievementsClaimed[ach.id] = claimedTier + 1;
       state.gems += nextTier.reward;
       state.totalGemsEarned += nextTier.reward;
-      showAchievementToast(ach.name, ach.icon, nextTier.desc, nextTier.reward);
+      showAchievementToast(ach, claimedTier + 1);
       showToast("🏆 " + ach.name + " Tier " + (claimedTier + 1) + "! +" + nextTier.reward + "💎");
       AudioManager.sfx.achievement();
     }
@@ -364,9 +382,15 @@ function refreshAchievementsUI() {
       continue;
     }
     var claimedTier = state.achievementsClaimed[ach.id] || 0; var maxTier = ach.tiers.length; var progress = getAchProgress(ach); var status = "";
-    if (claimedTier >= maxTier) { status = '<span class="ach-status claimed">✓ MAX</span>'; }
-    else { var next = ach.tiers[claimedTier]; status = '<span class="ach-status ready">' + next.desc + ' 💎' + next.reward + '</span>'; }
-    html += '<div class="ach-option"><div class="ach-info"><span class="ach-tier ' + ach.tier + '">' + ach.tier.toUpperCase() + '</span> ' + ach.icon + ' ' + ach.name + '<br><small style="color:#aaa">Tier ' + (claimedTier + 1) + '/' + maxTier + '</small><div class="ach-progress-bar"><div class="ach-progress-fill" style="width:' + (progress * 100) + '%"></div></div></div>' + status + '</div>';
+    var tierColor = TIER_COLORS[ach.tier] || '#ffd27a';
+    if (claimedTier >= maxTier) {
+      status = '<span class="ach-status claimed" style="background:' + tierColor + ';">✓ MAX</span>';
+    } else {
+      var next = ach.tiers[claimedTier];
+      status = '<span class="ach-status ready" style="border-color:' + tierColor + ';">' + next.desc + ' 💎' + next.reward + '</span>';
+    }
+    var progressBar = '<div class="ach-progress-bar" style="margin-top:4px;"><div class="ach-progress-fill" style="width:' + (progress * 100) + '%; background:' + tierColor + ';"></div></div>';
+    html += '<div class="ach-option"><div class="ach-info"><span class="ach-tier" style="color:' + tierColor + ';">' + ach.tier.toUpperCase() + '</span> ' + ach.icon + ' ' + ach.name + '<br><small style="color:#aaa">Tier ' + (claimedTier + 1) + '/' + maxTier + '</small>' + progressBar + '</div>' + status + '</div>';
   }
   list.innerHTML = html;
 }
@@ -529,8 +553,11 @@ function performPrestige(ppGain) {
   state.territoryUnlockCost = 100;
   state.territoryPassiveTimer = 0;
   state.territoryScoutQueue = [];
+  state.dynamicEventTimer = 300 + Math.random() * 600;
+  // legendaryDefeated is NOT reset here
   if (typeof resetFirstScoutFlag === 'function') resetFirstScoutFlag();
   if (typeof resetFirstBossFlag === 'function') resetFirstBossFlag();
+  initTerritoryMarkers();
   emitParticles(_v3.set(TX, GTY + 1.5, TCZ), 40, 0xff44ff, 0.1, 2.0, 1.0);
   showToast("✨ Prestige complete! Gained " + ppGain + " PP"); refreshHUD(); checkAchievements(); saveGame();
 }
@@ -562,7 +589,7 @@ function performAscension(apGain) {
   state.survivedNight = 0; state.rallyUses = 0; state.surgesCollected = 0; state.virtualWorkers = 0; state.evolution = { worker: 0, soldier: 0, scout: 0 };
   state.bossActive = false; state.bossTimer = BAL.bossIntervalMin + Math.random() * (BAL.bossIntervalMax - BAL.bossIntervalMin);
   state.bossKills = 0; state.bossType = null; state.currentBoss = null; state.prestigeCount = 0; state.prestigePoints = 0;
-  state.prestigeUpgrades = { ppFood: 0, ppSpeed: 0, ppHatch: 0, ppCap: 0, ppGem: 0, ppBoss: 0 }; state.prestigeFoodBonus = 0;
+  state.prestigeUpgrades = { ppFood: 0, ppSpeed: 0, ppHatch: 0, ppCap: 0, ppGem: 0, ppBoss: 0, queensForesight: 0, legacyVault: 0 }; state.prestigeFoodBonus = 0;
   state.currentZone = "forest"; state.unlockedZonesList = ["forest"]; state.speedBoostTimer = 0; state.luckyHourTimer = 0; state.defenseBannerTimer = 0;
   state.beetleKills = 0; state.waspKills = 0; state.tutorialsShown = {}; state.queenClicks = 0; state.prestigeStartTime = 0; state.prestigeStartLevel = 0;
   state.dailyChallengeDate = ""; state.dailyChallengeIds = []; state.dailyProgress = { hatch5: 0, kill8: 0, food300: 0, rally2: 0, boss1: 0, zone1: 0, upgrade1: 0, build1: 0, rare1: 0, night1: 0 };
@@ -575,12 +602,18 @@ function performAscension(apGain) {
   state.territoryUnlockCost = 100;
   state.territoryPassiveTimer = 0;
   state.territoryScoutQueue = [];
+  state.legendaryDefeated = [];
+  state.dynamicEventTimer = 300 + Math.random() * 600;
+  state._royalCooldownReduction = false;
+  state._pendingTerritoryClaim = false;
+  state._pendingLegacyScout = false;
   clearAllMeshes(); buildQueenChamberWalls(); rebuildAllChambers();
   for (var wi = 0; wi < state.workerCount; wi++) { var nw = createWorker(false); if (nw) workers.push(nw); }
   recalculateHatchTime(); updateEggLayTime(); recalculateFoodCap();
   state.bossTimer = BAL.bossIntervalMin + Math.random() * (BAL.bossIntervalMax - BAL.bossIntervalMin);
   if (typeof resetFirstScoutFlag === 'function') resetFirstScoutFlag();
   if (typeof resetFirstBossFlag === 'function') resetFirstBossFlag();
+  initTerritoryMarkers();
   AudioManager.sfx.ascend(); emitParticles(_v3.set(TX, GTY + 1.5, TCZ), 60, 0xffaa00, 0.12, 2.5, 1.2);
   showToast("⬆️ Ascension complete! +1 AP, permanent multipliers active!"); refreshHUD(); checkAchievements(); saveGame();
   var cfg = ZONE_CONFIG.forest; scene.background = new THREE.Color(cfg.bg); scene.fog = new THREE.Fog(cfg.fog, 20, 80);
@@ -694,7 +727,7 @@ function setupShopTabs() {
 }
 
 // =============================================
-//  TERRITORY PANEL (new)
+//  TERRITORY PANEL
 // =============================================
 var territoriesPanel = null;
 
@@ -708,7 +741,6 @@ function toggleTerritoriesPanel() {
   if (territoriesPanel.classList.contains('open')) {
     territoriesPanel.classList.remove('open');
   } else {
-    // Close other panels
     [buildPanel, upgradePanel, shopPanel, achPanel, evoPanel, ppPanel, ascPanel, researchPanel].forEach(function(p) {
       if (p) p.classList.remove('open');
     });
@@ -788,7 +820,7 @@ function setupButtons() {
   for (var i = 0; i < allShopIds.length; i++) { var id = allShopIds[i]; if (GEM_ITEMS[id].oneTime && state.gemUpgrades[id]) { var btn = document.getElementById("btn-shop-" + id); if (btn) { btn.disabled = true; btn.textContent = "Owned"; } } }
   refreshUpgradeUI(); refreshAscensionShopUI();
 
-  // ----- Territory button in More panel (new) -----
+  // Territory button in More panel
   var btnTerritories = document.getElementById("btn-territories");
   if (!btnTerritories) {
     btnTerritories = document.createElement('button');
