@@ -33,6 +33,8 @@ function combatUpdate(dt) {
       spawnDamageNumber(dmg, te.mesh.position, "#ff4444");
       // Flash the enemy being hit (red)
       flashMesh(te.mesh, 0xff0000, 0.08);
+      // Dust particles at impact point
+      emitParticles(te.mesh.position.clone(), 3, 0xaa8866, 0.03, 0.3, 0.2);
       s.attackCooldown = BAL.soldierAttackCD;
       s.lastCombatTime = performance.now() / 1000;
       if (te.health <= 0) killSpider(te);
@@ -74,6 +76,8 @@ function combatUpdate(dt) {
       spawnDamageNumber(dmg, ts.mesh.position, "#ffaa00");
       // Flash the soldier being hit (orange)
       flashMesh(ts.mesh, 0xff8800, 0.08);
+      // Dust particles at impact
+      emitParticles(ts.mesh.position.clone(), 3, 0xaa8866, 0.03, 0.3, 0.2);
       sp.attackCooldown = BAL.spiderAttackCD;
       ts.lastCombatTime = performance.now() / 1000;
       updateHealthBar(ts.healthBar, ts.health / ts.maxHealth);
@@ -118,4 +122,4 @@ function spawnDamageNumber(amount, wp, color) {
   f.style.fontWeight = "900";
   floatersEl.appendChild(f);
   setTimeout(function() { f.remove(); }, 900);
-}
+    }
