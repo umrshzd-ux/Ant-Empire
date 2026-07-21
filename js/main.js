@@ -995,7 +995,7 @@ function initGameSystems() {
   if (summonBtn) summonBtn.style.display = 'none';
 }
 
-// Prestige function (with Queen's Legacy)
+// Prestige function (with Queen's Legacy, legendary kept)
 function performPrestige(ppGain) {
   resetWeatherAndBoosts(); var pt = state.lifetimeStats.totalPlayTime + (performance.now() - state.lastTime) / 1000;
   if (state.prestigeStartTime > 0) { var thisPrestigeTime = pt - state.prestigeStartTime; if (!state.lifetimeStats.fastestPrestige || thisPrestigeTime < state.lifetimeStats.fastestPrestige) state.lifetimeStats.fastestPrestige = thisPrestigeTime; }
@@ -1020,7 +1020,6 @@ function performPrestige(ppGain) {
   if (state.currentBoss) { disposeMesh(state.currentBoss.mesh); scene.remove(state.currentBoss.mesh); state.currentBoss = null; }
   state.bossActive = false; var bossName = document.getElementById('boss-name'); if (bossName) bossName.style.display = 'none'; var bossBar = document.getElementById('boss-health-bar'); if (bossBar) bossBar.style.display = 'none';
   for (var i = 0; i < PRESTIGE_MILESTONES.length; i++) { var m = PRESTIGE_MILESTONES[i]; if (state.prestigeCount >= m.prestige) m.effect(); }
-  // Queen's Legacy bonus
   if (state.researchBonuses.queensLegacy) {
     state.workerCount += 2;
   }
@@ -1034,6 +1033,7 @@ function performPrestige(ppGain) {
   state.territoryUnlockCost = 100;
   state.territoryPassiveTimer = 0;
   state.territoryScoutQueue = [];
+  // legendaryDefeated is NOT reset here (kept across prestiges)
   if (typeof resetFirstScoutFlag === 'function') resetFirstScoutFlag();
   if (typeof resetFirstBossFlag === 'function') resetFirstBossFlag();
   initTerritoryMarkers();
@@ -1041,7 +1041,7 @@ function performPrestige(ppGain) {
   showToast("✨ Prestige complete! Gained " + ppGain + " PP"); refreshHUD(); checkAchievements(); saveGame();
 }
 
-// Ascension function
+// Ascension function (resets legendary)
 function performAscension(apGain) {
   resetWeatherAndBoosts(); var ascCount = state.ascensionCount + apGain; var ascPoints = state.ascensionPoints + apGain; var ascUpgrades = JSON.parse(JSON.stringify(state.ascensionUpgrades));
   state.colonyName = "Colony " + (currentSlot + 1); state.food = BAL.baseFoodCap; state.gems = 0; state.foodCap = BAL.baseFoodCap;
@@ -1069,6 +1069,8 @@ function performAscension(apGain) {
   state.territoryUnlockCost = 100;
   state.territoryPassiveTimer = 0;
   state.territoryScoutQueue = [];
+  // Reset legendary progress on ascension
+  state.legendaryDefeated = [];
   clearAllMeshes(); buildQueenChamberWalls(); rebuildAllChambers();
   for (var wi = 0; wi < state.workerCount; wi++) { var nw = createWorker(false); if (nw) workers.push(nw); }
   recalculateHatchTime(); updateEggLayTime(); recalculateFoodCap();
@@ -1102,3 +1104,4 @@ function clearAllMeshes() {
 }
 
 initThreeJS();
+    
