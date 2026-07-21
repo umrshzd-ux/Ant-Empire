@@ -141,6 +141,7 @@ function _doSpawnBoss() {
 
   AudioManager.sfx.bossSpawn();
   triggerShake(isLegendary ? 10 : 6, 0.5);
+  triggerHaptic(30, 1);
   showToast((isLegendary ? "💎 Legendary " : "💀 ") + bt.name + " appeared!");
 }
 
@@ -681,4 +682,4 @@ function summonBoss() {
 // Reset first boss flag on prestige/ascension
 function resetFirstBossFlag() {
   _firstBossSpawned = false;
-            }
+          }
