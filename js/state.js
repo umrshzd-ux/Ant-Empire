@@ -137,7 +137,10 @@ var state = {
   territoryScoutQueue: [],
 
   // Legendary bosses
-  legendaryDefeated: []
+  legendaryDefeated: [],
+
+  // Dynamic events
+  dynamicEventTimer: 300   // seconds until next dynamic event
 };
 var queenScale = BAL.queenBaseScale;
 state.lastTime = performance.now();
@@ -148,6 +151,7 @@ state.surgeTimer = BAL.surgeIntervalMin + Math.random() * (BAL.surgeIntervalMax 
 state.eventTimer = BAL.eventIntervalMin + Math.random() * (BAL.eventIntervalMax - BAL.eventIntervalMin);
 state.weatherTimer = BAL.weatherIntervalMin + Math.random() * (BAL.weatherIntervalMax - BAL.weatherIntervalMin);
 state.bossTimer = BAL.bossIntervalMin + Math.random() * (BAL.bossIntervalMax - BAL.bossIntervalMin);
+state.dynamicEventTimer = 300 + Math.random() * 600;
 state.xpToNext = Math.floor(40 * Math.pow(1.15, state.level - 1));
 
 // Reset state to fresh default (used when starting a new colony)
@@ -225,7 +229,9 @@ function resetStateToDefault(slot) {
   state.territoryUnlockCost = 100;
   state.territoryPassiveTimer = 0;
   state.territoryScoutQueue = [];
-  // Legendary kept across prestiges, no reset here.
+  // Legendary kept across prestiges
+  // Dynamic events timer reset
+  state.dynamicEventTimer = 300 + Math.random() * 600;
   recalculateHatchTime();
   updateEggLayTime();
   recalculateFoodCap();
@@ -479,6 +485,8 @@ function loadGameData(data) {
   if (data.territoryScoutQueue) state.territoryScoutQueue = data.territoryScoutQueue;
   // Legendary defeated
   if (data.legendaryDefeated) state.legendaryDefeated = data.legendaryDefeated;
+  // Dynamic event timer
+  if (data.dynamicEventTimer !== undefined) state.dynamicEventTimer = data.dynamicEventTimer;
   state.xpToNext = Math.floor(40 * Math.pow(1.15, state.level - 1));
   recalculateHatchTime();
   updateEggLayTime();
@@ -504,4 +512,4 @@ function addGems(amount) {
   state.totalGemsEarned += amount;
   state.lifetimeStats.totalGems = (state.lifetimeStats.totalGems || 0) + amount;
   showToast("+" + amount + "💎");
-  }
+    }
