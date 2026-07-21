@@ -246,26 +246,71 @@ var DAILY_CHALLENGE_POOL = [
   { id: "night1", desc: "Survive a night cycle", getProgress: function() { return (state.dailyProgress.night1 || 0) >= 1 ? 1 : 0; }, reward: 3, target: 1 }
 ];
 
+// PRESTIGE MILESTONES (updated with deeper gameplay changes)
 var PRESTIGE_MILESTONES = [
   { prestige: 1, desc: "Unlock Prestige Shop", icon: "✨", effect: function() {} },
   { prestige: 3, desc: "Start with +1 Worker", icon: "🐜", effect: function() { state.workerCount += 1; } },
   { prestige: 5, desc: "Start with Nursery Lv1", icon: "🥚", effect: function() { state.chambers.nursery.count = 1; state.chambers.nursery.hatchReduction = 2; recalculateHatchTime(); } },
   { prestige: 10, desc: "Start with Soldier Chamber", icon: "🛡️", effect: function() { state.chambers.soldier.count = 1; state.soldierCount = 1; } },
+  { prestige: 12, desc: "Territory Pioneer – Start with a claimed territory", icon: "🏁", effect: function() {
+    // Claim the first unclaimed marker in forest zone
+    if (typeof territoryMarkers !== 'undefined' && territoryMarkers.length > 0) {
+      for (var i = 0; i < territoryMarkers.length; i++) {
+        if (!territoryMarkers[i].claimed && territoryMarkers[i].zoneId === 'forest') {
+          // Simulate claiming without cost
+          territoryMarkers[i].claimed = true;
+          territoryMarkers[i].mesh.userData.claimed = true;
+          territoryMarkers[i].mesh.children.forEach(function(child) {
+            if (child.isMesh && child.material.color) child.material.color.setHex(0xFFD700);
+          });
+          var newTerr = {
+            id: 't_prestige_' + Date.now(),
+            zone: 'forest',
+            pos: { x: territoryMarkers[i].position.x, y: territoryMarkers[i].position.y, z: territoryMarkers[i].position.z },
+            resourceType: 'food',
+            level: 1,
+            claimedAt: Date.now(),
+            assignedWorkers: 0,
+            assignedSoldiers: 0
+          };
+          state.territoriesClaimed.push(newTerr);
+          break;
+        }
+      }
+    }
+  }},
   { prestige: 15, desc: "+10% food per trip", icon: "🌾", effect: function() { state.prestigeFoodBonus = (state.prestigeFoodBonus || 0) + 0.1; } },
   { prestige: 25, desc: "Start with Research Chamber", icon: "🔬", effect: function() { state.chambers.research.count = 1; } },
+  { prestige: 30, desc: "Legacy Scout – Start with an Explorer scout", icon: "🧭", effect: function() {
+    state.scoutCount++;
+    var sc = spawnScout();
+    if (sc) {
+      // Force Explorer class
+      var cls = ANT_CLASSES.explorer;
+      if (cls && cls.unlockCondition()) {
+        applyClassBonuses(sc, cls);
+      }
+    }
+  }},
   { prestige: 35, desc: "Start with +2 Workers", icon: "🐜", effect: function() { state.workerCount += 2; } },
+  { prestige: 40, desc: "Eternal Inspiration – Queen ability cooldowns -20%", icon: "⏱️", effect: function() {
+    state._royalCooldownReduction = true; // flag used by royalchamber.js
+  }},
   { prestige: 50, desc: "Queen 2× size + all food +1", icon: "👑", effect: function() { queenScale = BAL.queenBaseScale * 2; if (qMesh) qMesh.scale.setScalar(queenScale); state.prestigeFoodBonus = (state.prestigeFoodBonus || 0) + 1; } },
   { prestige: 75, desc: "Start with Scout Chamber", icon: "🔍", effect: function() { state.chambers.scout.count = 1; state.scoutCount = 1; } },
   { prestige: 100, desc: "Golden Queen skin + 2× PP", icon: "✨", effect: function() {} }
 ];
 
+// PRESTIGE SHOP (added new gameplay items)
 var PRESTIGE_SHOP = [
   { id: "ppFood", name: "Eternal Harvest", desc: "Base food/trip +1", cost: 1, maxLevel: 5, icon: "🌾" },
   { id: "ppSpeed", name: "Swift Colony", desc: "Worker & Scout speed +10%", cost: 1, maxLevel: 5, icon: "💨" },
   { id: "ppHatch", name: "Rapid Hatching", desc: "Base hatch time -1s", cost: 1, maxLevel: 5, icon: "🥚" },
   { id: "ppCap", name: "Vast Storage", desc: "Base food cap +50", cost: 1, maxLevel: 5, icon: "📦" },
   { id: "ppGem", name: "Gem Magnet", desc: "+10% gem chance from scouts", cost: 2, maxLevel: 3, icon: "💎" },
-  { id: "ppBoss", name: "Boss Hunter", desc: "+25% damage vs bosses", cost: 2, maxLevel: 3, icon: "💀" }
+  { id: "ppBoss", name: "Boss Hunter", desc: "+25% damage vs bosses", cost: 2, maxLevel: 3, icon: "💀" },
+  { id: "queensForesight", name: "Queen's Foresight", desc: "Start each run with one random economy research completed", cost: 5, maxLevel: 1, icon: "🔮" },
+  { id: "legacyVault", name: "Legacy Vault", desc: "Permanently +200 food capacity", cost: 3, maxLevel: 1, icon: "🏦" }
 ];
 
 var ASCENSION_SHOP = [
@@ -414,10 +459,9 @@ var DYNAMIC_EVENTS = [
     condition: function() { return state.level >= 10 && state.prestigeCount >= 2; },
     action: function() {
       showToast("🕷️ Spider Migration! A massive wave approaches!");
-      // Spawn a custom wave with double the spiders and higher health
       startWaveWithParams(10, 12, 50, 8);
     },
-    duration: 0 // no ongoing effect, just immediate
+    duration: 0
   },
   {
     id: "waspSwarm",
@@ -426,7 +470,6 @@ var DYNAMIC_EVENTS = [
     condition: function() { return state.unlockedZonesList.indexOf("meadow") !== -1; },
     action: function() {
       showToast("🐝 Wasp Swarm incoming! They're fast and deadly!");
-      // Spawn 5 wasp-like enemies (recolored spiders with higher speed and damage)
       for (var i = 0; i < 5; i++) {
         if (enemies.length < BAL.maxEnemies) {
           var wasp = createCustomEnemy(0xFFD700, 0xB8860B, 25, 8, 0.6);
@@ -468,7 +511,6 @@ var DYNAMIC_EVENTS = [
     condition: function() { return state.lifetimeStats.totalPlayTime > 3600; },
     action: function() {
       showToast("⚔️ A raiding party of beetles is attacking!");
-      // Spawn 4 tough beetle-like enemies
       for (var i = 0; i < 4; i++) {
         if (enemies.length < BAL.maxEnemies) {
           var beetle = createCustomEnemy(0x444400, 0x222200, 40, 10, 0.4);
