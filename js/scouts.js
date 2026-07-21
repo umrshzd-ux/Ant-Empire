@@ -159,7 +159,7 @@ function processScoutReturn(s) {
     addGems(1);
   }
 
-  // Deep Cartography: chance to claim unclaimed territory (5%)
+  // Deep Cartography: chance to claim unclaimed territory (5%) — FREE
   if (state.researchBonuses.deepCartography && Math.random() < 0.05) {
     var unclaimedMarkers = [];
     for (var i = 0; i < territoryMarkers.length; i++) {
@@ -169,10 +169,44 @@ function processScoutReturn(s) {
     }
     if (unclaimedMarkers.length > 0) {
       var randomIndex = unclaimedMarkers[Math.floor(Math.random() * unclaimedMarkers.length)];
-      claimTerritory(randomIndex);
+      claimFreeTerritory(randomIndex);
       showToast("🗺️ Deep Cartography: Scout claimed a new territory!");
     }
   }
+}
+
+// ---- Free territory claim (no cost, no unlock price increase) ----
+function claimFreeTerritory(markerIndex) {
+  if (markerIndex < 0 || markerIndex >= territoryMarkers.length) return;
+  var marker = territoryMarkers[markerIndex];
+  if (marker.claimed) return;
+
+  // Mark as claimed and turn flag gold
+  marker.claimed = true;
+  marker.mesh.userData.claimed = true;
+  marker.mesh.children.forEach(function(child) {
+    if (child.isMesh && child.material.color) {
+      child.material.color.setHex(0xFFD700);
+    }
+  });
+
+  // Add territory to state without cost
+  var territoryId = 't_free_' + Date.now();
+  var newTerritory = {
+    id: territoryId,
+    zone: marker.zoneId,
+    pos: { x: marker.position.x, y: marker.position.y, z: marker.position.z },
+    resourceType: 'food',
+    level: 1,
+    claimedAt: Date.now(),
+    assignedWorkers: 0,
+    assignedSoldiers: 0
+  };
+  state.territoriesClaimed.push(newTerritory);
+  recalculateFoodCap();
+  emitParticles(marker.position, 8, 0xFFD700, 0.05, 0.6, 0.4);
+  refreshHUD();
+  saveGame();
 }
 
 // ---- Helper: claim territory by world position (used by deep cartography) ----
@@ -185,7 +219,7 @@ function claimTerritoryByPosition(x, z) {
         Math.pow(marker.position.z - z, 2)
       );
       if (dist < 1.5) {
-        claimTerritory(i);
+        claimFreeTerritory(i);
         return true;
       }
     }
@@ -200,8 +234,7 @@ function getEffectiveScoutSpeed() {
   if (state.prestigeUpgrades.ppSpeed) base *= 1 + state.prestigeUpgrades.ppSpeed * 0.1;
   if (state.ascensionUpgrades.goldenQueen > 0) base *= 2;
   if (state.researchBonuses && state.researchBonuses.scoutSpeed) base += state.researchBonuses.scoutSpeed;
-  // Legendary Riverside: +20% scout speed (handled in state.js getEffectiveScoutSpeed, which is called elsewhere,
-  // but this function is separate; we'll apply here as well for consistency)
+  // Legendary Riverside: +20% scout speed
   if (state.gemUpgrades.legendaryRiverside) base *= 1.20;
   return base;
 }
@@ -222,4 +255,4 @@ function clearAllScouts() {
     }
   }
   scouts = [];
-    }
+}
