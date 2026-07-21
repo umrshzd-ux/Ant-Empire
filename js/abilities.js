@@ -15,17 +15,20 @@ function activateRally() {
 
 function deactivateRally() {
   state.rallyActive = false;
-  state.rallyCooldown = BAL.rallyCooldown;
+  var baseCooldown = BAL.rallyCooldown;
+  if (state.researchBonuses.rallyCooldownReduction > 0) {
+    baseCooldown = Math.floor(baseCooldown * (1 - state.researchBonuses.rallyCooldownReduction));
+  }
+  state.rallyCooldown = baseCooldown;
   applyAllWorkerSpeeds();
 }
 
 function updateSummonButton() {
   if (!summonBtn) return;
-  // Disable if boss active, not enough gems, or no soldier chamber built
   if (state.bossActive) {
     summonBtn.style.display = "none";
   } else if (state.chambers.soldier.count === 0) {
-    summonBtn.style.display = "none"; // can't fight without soldiers
+    summonBtn.style.display = "none";
   } else {
     summonBtn.style.display = state.gems >= BAL.summonCost ? "block" : "none";
   }
@@ -52,7 +55,6 @@ function endWave() {
 }
 
 function triggerRandomEvent() {
-  // Classic event (fallback when no reactive event)
   var ev = EVENTS[Math.floor(Math.random() * EVENTS.length)];
   state.eventActive = true;
   if (eventBtn) {
@@ -102,4 +104,4 @@ function applyWeatherEffects(type, active) {
       updateDailyProgress('night1', 1);
     }
   }
-        }
+}
