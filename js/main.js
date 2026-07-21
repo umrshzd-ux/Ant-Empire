@@ -35,6 +35,58 @@ function initThreeJS() {
   fLight.position.set(-6, 4, -6);
   scene.add(fLight);
   raycaster = new THREE.Raycaster();
+
+  // ===== COMBINED CLICK HANDLER (territory + queen) =====
+  renderer.domElement.addEventListener('click', function(e) {
+    if (!qMesh) return;
+    var mouse = new THREE.Vector2();
+    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+
+    // Check territory markers first
+    if (typeof territoryMarkers !== 'undefined') {
+      var territoryIntersects = raycaster.intersectObjects(territoryMarkers.map(function(m) { return m.mesh; }), true);
+      if (territoryIntersects.length > 0) {
+        var clickedObj = territoryIntersects[0].object;
+        while (clickedObj && !clickedObj.userData.isTerritoryMarker) {
+          clickedObj = clickedObj.parent;
+        }
+        if (clickedObj && clickedObj.userData.isTerritoryMarker) {
+          var markerIndex = -1;
+          for (var i = 0; i < territoryMarkers.length; i++) {
+            if (territoryMarkers[i].mesh === clickedObj) { markerIndex = i; break; }
+          }
+          if (markerIndex >= 0) {
+            if (territoryMarkers[markerIndex].claimed) {
+              var terr = null;
+              var markerPos = territoryMarkers[markerIndex].position;
+              for (var j = 0; j < state.territoriesClaimed.length; j++) {
+                var tp = state.territoriesClaimed[j].pos;
+                if (Math.abs(tp.x - markerPos.x) < 1 && Math.abs(tp.z - markerPos.z) < 1) {
+                  terr = state.territoriesClaimed[j]; break;
+                }
+              }
+              if (terr) showTerritoryAssignPanel(terr.id);
+            } else {
+              claimTerritory(markerIndex);
+            }
+          }
+          return;
+        }
+      }
+    }
+
+    // Queen click fallback
+    var queenIntersects = raycaster.intersectObject(qMesh, true);
+    if (queenIntersects.length > 0) {
+      state.queenClicks++;
+      emitParticles(_v3.copy(qMesh.position), 5, 0xff44ff, 0.03, 0.5, 0.4);
+      showToast("👑 Queen clicked! (" + state.queenClicks + ")");
+      checkAchievements();
+    }
+  });
 }
 
 // ----- Main menu functions -----
@@ -238,7 +290,7 @@ window.loadSlot = function(slot) {
   }, 600);
 };
 
-// ===== TERRITORY SYSTEM FUNCTIONS (new) =====
+// ===== TERRITORY SYSTEM FUNCTIONS =====
 
 function claimTerritory(markerIndex) {
   if (markerIndex < 0 || markerIndex >= territoryMarkers.length) return;
@@ -377,60 +429,6 @@ function updateTerritoryResources(dt) {
     }
   }
 }
-
-// Click handler for territory markers (integrated)
-renderer.domElement.addEventListener('click', function(e) {
-  if (!qMesh) return;
-  var mouse = new THREE.Vector2();
-  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-
-  raycaster.setFromCamera(mouse, camera);
-
-  var territoryIntersects = raycaster.intersectObjects(territoryMarkers.map(function(m) { return m.mesh; }), true);
-  if (territoryIntersects.length > 0) {
-    var clickedObj = territoryIntersects[0].object;
-    while (clickedObj && !clickedObj.userData.isTerritoryMarker) {
-      clickedObj = clickedObj.parent;
-    }
-    if (clickedObj && clickedObj.userData.isTerritoryMarker) {
-      var markerIndex = -1;
-      for (var i = 0; i < territoryMarkers.length; i++) {
-        if (territoryMarkers[i].mesh === clickedObj) {
-          markerIndex = i;
-          break;
-        }
-      }
-      if (markerIndex >= 0) {
-        if (territoryMarkers[markerIndex].claimed) {
-          var terr = null;
-          var markerPos = territoryMarkers[markerIndex].position;
-          for (var j = 0; j < state.territoriesClaimed.length; j++) {
-            var tp = state.territoriesClaimed[j].pos;
-            if (Math.abs(tp.x - markerPos.x) < 1 && Math.abs(tp.z - markerPos.z) < 1) {
-              terr = state.territoriesClaimed[j];
-              break;
-            }
-          }
-          if (terr) {
-            showTerritoryAssignPanel(terr.id);
-          }
-        } else {
-          claimTerritory(markerIndex);
-        }
-      }
-      return;
-    }
-  }
-
-  var intersects = raycaster.intersectObject(qMesh, true);
-  if (intersects.length > 0) {
-    state.queenClicks++;
-    emitParticles(_v3.copy(qMesh.position), 5, 0xff44ff, 0.03, 0.5, 0.4);
-    showToast("👑 Queen clicked! (" + state.queenClicks + ")");
-    checkAchievements();
-  }
-});
 
 // Screenshake
 var shakeIntensity = 0, shakeDuration = 0;
@@ -626,7 +624,7 @@ function startGameLoop() {
       }
     } catch(e) { console.error('General update error:', e); }
 
-    // ---- Rain update ----
+    // ---- Rain / fireflies ----
     try {
       if (state.weatherActive && state.weatherType === "rain") {
         _lastRainUpdate += dt;
@@ -639,7 +637,6 @@ function startGameLoop() {
           }
         }
       }
-      // Fireflies during night
       if (state.weatherActive && state.weatherType === "night") {
         updateFireflies(dt);
       }
@@ -853,7 +850,7 @@ function startGameLoop() {
       }
     } catch(e) { console.error('Enemy movement error:', e); }
 
-    // ---- Combat (spiders only) ----
+    // ---- Combat ----
     try {
       combatUpdate(dt);
     } catch(e) { console.error('Combat error:', e); }
@@ -952,7 +949,7 @@ function startGameLoop() {
       if (sC > 10) { sC = 0; state.lastSaveTime = Date.now(); saveGame(); }
     } catch(e) { console.error('Save error:', e); }
 
-    // ---- Render always runs ----
+    // ---- Render ----
     try {
       renderer.render(scene, camera);
     } catch(e) { console.error('Render error:', e); }
@@ -963,7 +960,7 @@ function startGameLoop() {
 function initGameSystems() {
   if (gameSystemsReady) { clearAllMeshes(); gameSystemsReady = false; }
   buildTerrain();
-  initQueen();  // <-- moved here so scene already exists
+  initQueen();  // <-- Queen is created after terrain
   buildQueenChamberWalls();
   initFoodStations();
   initMushrooms();
