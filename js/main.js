@@ -92,43 +92,25 @@ function initThreeJS() {
 // ----- Main menu functions -----
 function showMainMenu() {
   gamePaused = true;
-  if (gameLoopActive) {
-    state.lastSaveTime = Date.now();
-    saveGame();
-  }
-
+  if (gameLoopActive) { state.lastSaveTime = Date.now(); saveGame(); }
   document.getElementById('main-menu').style.display = 'flex';
   document.getElementById('hud').style.display = 'none';
   document.getElementById('bottom-bar').style.display = 'none';
   document.getElementById('canvas-container').style.display = 'none';
-
-  var bossName = document.getElementById('boss-name');
-  if (bossName) bossName.style.display = 'none';
-  var bossBar = document.getElementById('boss-health-bar');
-  if (bossBar) bossBar.style.display = 'none';
-  var summonBtn = document.getElementById('summon-btn');
-  if (summonBtn) summonBtn.style.display = 'none';
-
-  var surgeBtn = document.getElementById('surge-btn');
-  if (surgeBtn) surgeBtn.style.display = 'none';
-  var eventBtn = document.getElementById('event-btn');
-  if (eventBtn) eventBtn.style.display = 'none';
-
-  var goalsPanel = document.getElementById('goals-panel');
-  if (goalsPanel) goalsPanel.style.display = 'none';
-  var queenAbilities = document.getElementById('queen-abilities');
-  if (queenAbilities) queenAbilities.style.display = 'none';
-  var rivalWarning = document.getElementById('rival-warning');
-  if (rivalWarning) rivalWarning.style.display = 'none';
-  var reactivePanel = document.getElementById('reactive-event-panel');
-  if (reactivePanel) reactivePanel.style.display = 'none';
-
+  var bossName = document.getElementById('boss-name'); if (bossName) bossName.style.display = 'none';
+  var bossBar = document.getElementById('boss-health-bar'); if (bossBar) bossBar.style.display = 'none';
+  var summonBtn = document.getElementById('summon-btn'); if (summonBtn) summonBtn.style.display = 'none';
+  var surgeBtn = document.getElementById('surge-btn'); if (surgeBtn) surgeBtn.style.display = 'none';
+  var eventBtn = document.getElementById('event-btn'); if (eventBtn) eventBtn.style.display = 'none';
+  var goalsPanel = document.getElementById('goals-panel'); if (goalsPanel) goalsPanel.style.display = 'none';
+  var queenAbilities = document.getElementById('queen-abilities'); if (queenAbilities) queenAbilities.style.display = 'none';
+  var rivalWarning = document.getElementById('rival-warning'); if (rivalWarning) rivalWarning.style.display = 'none';
+  var reactivePanel = document.getElementById('reactive-event-panel'); if (reactivePanel) reactivePanel.style.display = 'none';
   var toastEl = document.getElementById('toast'); if (toastEl) { toastEl.style.opacity = '0'; toastEl.textContent = ''; }
   var floatersEl = document.getElementById('floaters'); if (floatersEl) floatersEl.innerHTML = '';
   var tutEl = document.getElementById('tutorial-toast'); if (tutEl) tutEl.style.opacity = '0';
   var achEl = document.getElementById('achievement-toast'); if (achEl) achEl.style.opacity = '0';
   closeAllModals();
-
   renderSlots();
 }
 
@@ -137,15 +119,10 @@ function hideMainMenu() {
   document.getElementById('hud').style.display = 'flex';
   document.getElementById('bottom-bar').style.display = 'flex';
   document.getElementById('canvas-container').style.display = 'block';
-
-  var bossName = document.getElementById('boss-name');
-  if (bossName) bossName.style.display = 'none';
-  var bossBar = document.getElementById('boss-health-bar');
-  if (bossBar) bossBar.style.display = 'none';
+  var bossName = document.getElementById('boss-name'); if (bossName) bossName.style.display = 'none';
+  var bossBar = document.getElementById('boss-health-bar'); if (bossBar) bossBar.style.display = 'none';
   gamePaused = false;
-
-  var goalsPanel = document.getElementById('goals-panel');
-  if (goalsPanel) goalsPanel.style.display = 'flex';
+  var goalsPanel = document.getElementById('goals-panel'); if (goalsPanel) goalsPanel.style.display = 'flex';
 }
 
 // ----- Save slot rendering (three separate buttons) -----
@@ -949,7 +926,7 @@ function startGameLoop() {
       if (sC > 10) { sC = 0; state.lastSaveTime = Date.now(); saveGame(); }
     } catch(e) { console.error('Save error:', e); }
 
-    // ---- Render ----
+    // ---- Render always runs ----
     try {
       renderer.render(scene, camera);
     } catch(e) { console.error('Render error:', e); }
@@ -1109,4 +1086,6 @@ function clearAllMeshes() {
   var bossBar = document.getElementById('boss-health-bar'); if (bossBar) bossBar.style.display = 'none';
 }
 
-initThreeJS();
+// ===== INITIALISATION (call order matters) =====
+initThreeJS();          // creates scene, camera, renderer, etc.
+initCamera();           // now attaches touch listeners and sets initial camera state
