@@ -46,8 +46,6 @@ function addLabel(parent, text, yOff, undergroundOnly) { var l = createLabelSpri
 var qMesh;
 function initQueen() { qMesh = buildAntMesh(queenScale, 0x8a4a1a); qMesh.position.set(TX, NP.y, CZ); scene.add(qMesh); addLabel(qMesh, "👑 Queen", 1.3, true); qMesh.userData = { idleTime: 0, isQueen: true }; }
 
-// Queen click handler has been MOVED to main.js to avoid referencing renderer before it exists.
-
 var workers = []; var nWI = 0;
 function getWorkerVisualScale() { return BAL.workerBaseScale + state.upgrades.workerSpeed * BAL.workerScalePerUpgrade; }
 function pathToStation(st) { return [TB_vec, ED, ER, new THREE.Vector3(st.x, GTY, st.z)]; }
@@ -63,7 +61,6 @@ function createWorker(golden, rareType, forceRender) {
   var w = { id: id, mesh: mesh, station: st, slotIndex: null, state: "TO_FOOD", path: pathToStation(st), pathIndex: 0, speed: baseSpeed * speedMult + Math.random() * 0.4, waitTimer: Math.random() * 1.5, carrying: false, foodIcon: null, eggIcon: null, targetScale: ws, rendered: true, personalOffset: (Math.random() - 0.5) * 0.6, isSoldier: false, isScout: false, carryingEgg: false, avoidTimer: 0, isGolden: golden || false, isRare: !!rareType, rareType: rareType, foodBonus: rareType ? rareType.foodBonus : 0, _speedMult: speedMult };
   if (state.rallyActive) w.speed *= BAL.rallySpeedMultiplier;
 
-  // ----- Ant Class Integration -----
   var cls = typeof assignClass === 'function' ? assignClass("worker") : null;
   if (cls) applyClassBonuses(w, cls);
 
@@ -83,7 +80,6 @@ function updateWorker(w, dt) {
   if (w.avoidTimer > 0) { w.avoidTimer -= dt; return; }
   var distToEntrance = w.mesh.position.distanceTo(ER);
   if (distToEntrance > NEST_SAFE_RADIUS && isBossNearby(w, BAL.workerFleeRange * 2)) { w.avoidTimer = 0.5; if (state.bossActive && state.currentBoss && state.currentBoss.mesh) { var bdx = w.mesh.position.x - state.currentBoss.mesh.position.x, bdz = w.mesh.position.z - state.currentBoss.mesh.position.z, a = Math.atan2(bdx, bdz); w.mesh.position.x += Math.sin(a) * 0.03; w.mesh.position.z += Math.cos(a) * 0.03; } return; }
-  // Allow returning workers to ignore soldiers if close to entrance
   var returningHome = (w.state === "TO_NEST" || w.carrying);
   if (!returningHome || distToEntrance > 3.0) {
     if (avoidSoldiers(w)) return;
@@ -103,7 +99,6 @@ function updateWorker(w, dt) {
   var p = w.mesh.position; var dx = target.x - p.x, dy = target.y - p.y, dz = target.z - p.z; var dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
   if (dist < 0.15) { w.pathIndex++; if (w.pathIndex >= w.path.length) w.state = w.state === "TO_FOOD" ? "AT_FOOD" : "AT_NEST"; return; }
   var step = Math.min(w.speed * dt, dist); p.x += (dx / dist) * step; p.y += (dy / dist) * step; p.z += (dz / dist) * step; w.mesh.rotation.y = Math.atan2(dx, dz);
-  // Subtle walking bounce + extra bounce when carrying food
   w.mesh.position.y += Math.sin(performance.now() / 90 + p.x * 5) * 0.008;
   if (w.carrying) {
     w.mesh.position.y += Math.sin(performance.now() / 80) * 0.015;
@@ -136,7 +131,6 @@ function createHealthBar(parent, w, h, yOff) { var c = document.createElement("c
 function updateHealthBar(bar, ratio) { var ctx = bar.canvas.getContext("2d"); ctx.clearRect(0, 0, bar.canvas.width, bar.canvas.height); ctx.fillStyle = "#333"; ctx.fillRect(0, 0, bar.canvas.width, bar.canvas.height); ctx.fillStyle = ratio > 0.5 ? "#4a4" : ratio > 0.25 ? "#aa4" : "#a44"; ctx.fillRect(1, 1, (bar.canvas.width - 2) * Math.max(0, ratio), bar.canvas.height - 2); bar.texture.needsUpdate = true; }
 function spawnSoldier(chX) {
   var mesh = buildAntMesh(1.8, 0x3a1a0a, 1.5);
-  // Place soldier slightly away from the entrance to avoid crowding
   mesh.position.copy(ER).add(new THREE.Vector3((Math.random() - 0.5) * 2, 0, (Math.random() - 0.5) * 2));
   scene.add(mesh);
   addLabel(mesh, "🛡️ Soldier Lv" + (state.upgrades.soldierDamage + 1), 1.1, false);
@@ -144,7 +138,6 @@ function spawnSoldier(chX) {
   var mh = getEffectiveSoldierMaxHealth();
   var soldier = { mesh: mesh, health: mh, maxHealth: mh, healthBar: hb, patrolIndex: 0, target: PATROL_POINTS[0].clone(), speed: 0.9 + Math.random() * 0.3, waitTimer: 0, isSoldier: true, attackCooldown: 0, lastCombatTime: 0, guardMesh: null, chX: chX, freezeTimer: 0, damageMultiplier: 1 };
 
-  // ----- Ant Class Integration -----
   var cls = typeof assignClass === 'function' ? assignClass("soldier") : null;
   if (cls) applyClassBonuses(soldier, cls);
 
@@ -165,7 +158,6 @@ function updateSoldier(s, dt) {
   if (s.health < s.maxHealth && now - s.lastCombatTime > BAL.soldierRegenDelay) { s.health = Math.min(s.maxHealth, s.health + BAL.soldierRegenRate * dt); updateHealthBar(s.healthBar, s.health / s.maxHealth); }
   if (s.waitTimer > 0) { s.waitTimer -= dt; return; }
 
-  // Check if the soldier's current patrol target is too close to the entrance; skip it
   if (s.target && s.target.distanceTo(ER) < 3.0) {
     s.patrolIndex = (s.patrolIndex + 1) % PATROL_POINTS.length;
     s.target.copy(PATROL_POINTS[s.patrolIndex]);
@@ -185,7 +177,6 @@ function updateSoldier(s, dt) {
 var eggMs = [], hatchFx = [];
 function pTH() { var b = document.getElementById("btn-tunnel"); if (b) { b.classList.remove("hint-pulse"); void b.offsetWidth; b.classList.add("hint-pulse"); } }
 function layEgg() {
-  // Auto egg transport: if researched and nursery exists, place egg directly in nursery
   if (state.researchBonuses.autoEggTransport && state.chambers.nursery.count > 0) {
     state.eggs++;
     var nurseryX = TX - 5 - (state.chambers.nursery.count - 1) * 3.5;
@@ -198,7 +189,6 @@ function layEgg() {
     return;
   }
 
-  // Normal egg laying
   if (state.chambers.nursery.count > 0) {
     var cf = createEggTransport();
     if (!cf) {
@@ -233,7 +223,6 @@ function hatchEgg(egg, i) {
 }
 
 function isBossNearby(w, range) { if (!state.bossActive || !state.currentBoss || !state.currentBoss.mesh) return false; if (!w.mesh) return false; return w.mesh.position.distanceTo(state.currentBoss.mesh.position) < range; }
-
 
 // ===== AUDIO MANAGER + SETTINGS =====
 var AudioManager = {};
