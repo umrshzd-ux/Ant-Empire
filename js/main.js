@@ -161,9 +161,28 @@ window.playColony = function(slot) {
 };
 
 window.newColony = function(slot) {
-  // Force-clear any leftover data for this slot before starting fresh
-  try { localStorage.removeItem('antEmpire_slot_' + slot); } catch(e) {}
-  loadSlot(slot);
+  // Force-delete any old data for this slot, then start completely fresh
+  SaveManager.deleteSlot(slot); // remove from localStorage
+  currentSlot = -1; // make sure no old reference persists
+  if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId = null; }
+  gameLoopActive = false;
+  clearAllMeshes();
+  resetStateToDefault(slot);
+  currentSlot = slot;
+  state.lastSaveTime = Date.now();   // prevent offline progress
+  state.lastTime = performance.now();
+  hideMainMenu();
+  initGameSystems();
+  startGameLoop();
+  state.bossTimer = BAL.bossIntervalMin + Math.random() * (BAL.bossIntervalMax - BAL.bossIntervalMin);
+  AudioManager.sfx.buttonClick();
+  var bossName = document.getElementById('boss-name'); if (bossName) bossName.style.display = 'none';
+  var bossBar = document.getElementById('boss-health-bar'); if (bossBar) bossBar.style.display = 'none';
+  var summonBtn = document.getElementById('summon-btn'); if (summonBtn) summonBtn.style.display = 'none';
+  // skip offline check entirely
+  setTimeout(function() {
+    checkDailyLogin();
+  }, 600);
 };
 
 window.renameColony = function(slot) {
@@ -244,7 +263,6 @@ window.loadSlot = function(slot) {
     currentSlot = slot;
   }
 
-  // Force the current time to now – this prevents offline progress from giving free food
   state.lastSaveTime = Date.now();
   state.lastTime = performance.now();
 
@@ -264,14 +282,10 @@ window.loadSlot = function(slot) {
   var summonBtn = document.getElementById('summon-btn');
   if (summonBtn) summonBtn.style.display = 'none';
 
-  // Offline check – skipped because we just set lastSaveTime to now
   setTimeout(function() {
     checkDailyLogin();
   }, 600);
 };
-
-// ... (rest of the file remains the same as previously provided, no other changes)
-// I am now pasting the full file from earlier but with the above changes and ensuring no truncation.
 
 // ===== TERRITORY SYSTEM FUNCTIONS =====
 
@@ -404,7 +418,7 @@ function updateTerritoryResources(dt) {
       var foodPerWorker = state.researchBonuses.territoryCaravanBonus ? 3 : 2;
       var generation = terr.assignedWorkers * foodPerWorker;
       if (generation > 0) {
-        addFood(generation, null);
+        addFood(generation, null, "territory");
       }
       if (terr.assignedSoldiers > 0 && Math.random() < terr.assignedSoldiers * 0.01) {
         addGems(1);
@@ -590,7 +604,7 @@ function startGameLoop() {
         if (vwFoodAccum >= 1) {
           var addNow = Math.floor(vwFoodAccum);
           vwFoodAccum -= addNow;
-          addFood(addNow);
+          addFood(addNow, null, "virtual");
         }
       }
 
