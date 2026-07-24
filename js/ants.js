@@ -66,7 +66,8 @@ function createWorker(golden, rareType, forceRender) {
   // ----- Ant Class Integration -----
   var cls = typeof assignClass === 'function' ? assignClass("worker") : null;
   if (cls) applyClassBonuses(w, cls);
-  // Hard safety: foodBonus must be a safe number
+
+  // FIX 1: clamp foodBonus to a safe maximum
   if (typeof w.foodBonus !== 'number' || w.foodBonus < 0 || w.foodBonus > 10) w.foodBonus = 0;
 
   return w;
@@ -97,7 +98,7 @@ function updateWorker(w, dt) {
   var fpt = (state.food > state.foodCap * 0.5 ? diminishedFood : effectiveFood) + (w.foodBonus || 0);
   if (state.evolution.worker >= 1) fpt += EVOLUTION_TREE.worker.tiers[0].effect.foodBonus;
   var cfg = getCurrentZoneConfig(); if (cfg) fpt += cfg.foodBonus;
-  // Absolute safety cap (removes runaway food)
+  // FIX 2: hard cap on food per trip
   if (fpt > 50) fpt = 3;
   if (w.state === "AT_FOOD") { releaseStationSlot(w.station, w.slotIndex); w.slotIndex = null; w.waitTimer = 0.5; w.carrying = true; w.state = "TO_NEST"; setPathTarget(w, "NEST"); return; }
   if (w.state === "AT_NEST") { addFood(fpt, NP.clone()); addStockpileCrumb(); storagePilesDirty = true; qgLight.intensity = 3; qgSphere.material.emissiveIntensity = 1.5; cLP = 1; w.carrying = false; w.dropAnimTimer = 0.4; w.waitTimer = 0.4; w.state = "TO_FOOD"; setPathTarget(w, "FOOD"); return; }
@@ -140,8 +141,7 @@ function createHealthBar(parent, w, h, yOff) { var c = document.createElement("c
 function updateHealthBar(bar, ratio) { var ctx = bar.canvas.getContext("2d"); ctx.clearRect(0, 0, bar.canvas.width, bar.canvas.height); ctx.fillStyle = "#333"; ctx.fillRect(0, 0, bar.canvas.width, bar.canvas.height); ctx.fillStyle = ratio > 0.5 ? "#4a4" : ratio > 0.25 ? "#aa4" : "#a44"; ctx.fillRect(1, 1, (bar.canvas.width - 2) * Math.max(0, ratio), bar.canvas.height - 2); bar.texture.needsUpdate = true; }
 function spawnSoldier(chX) {
   var mesh = buildAntMesh(1.8, 0x3a1a0a, 1.5);
-  // Offset soldier slightly away from the nest entrance to prevent crowding
-  mesh.position.copy(ER).add(new THREE.Vector3((Math.random() - 0.5) * 2, 0, (Math.random() - 0.5) * 2));
+  mesh.position.copy(ER);
   scene.add(mesh);
   addLabel(mesh, "🛡️ Soldier Lv" + (state.upgrades.soldierDamage + 1), 1.1, false);
   var hb = createHealthBar(mesh, 60, 8, 1.2);
