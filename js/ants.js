@@ -1,5 +1,5 @@
 // ===== ANT MODEL, WORKERS, SOLDIERS, QUEEN, EGGS (REWRITTEN) =====
-
+ console.log('>>> NEW ants.js loaded – rewrite version <<<');
 var NEST_SAFE_RADIUS = 6.0;
 
 // ---------- Mesh builder ----------
