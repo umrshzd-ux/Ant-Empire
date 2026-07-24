@@ -161,9 +161,9 @@ window.playColony = function(slot) {
 };
 
 window.newColony = function(slot) {
-  // Force-delete any old data for this slot, then start completely fresh
-  SaveManager.deleteSlot(slot); // remove from localStorage
-  currentSlot = -1; // make sure no old reference persists
+  // Force-clear any leftover data for this slot before starting fresh
+  try { localStorage.removeItem('antEmpire_slot_' + slot); } catch(e) {}
+  currentSlot = -1;
   if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId = null; }
   gameLoopActive = false;
   clearAllMeshes();
@@ -418,7 +418,7 @@ function updateTerritoryResources(dt) {
       var foodPerWorker = state.researchBonuses.territoryCaravanBonus ? 3 : 2;
       var generation = terr.assignedWorkers * foodPerWorker;
       if (generation > 0) {
-        addFood(generation, null, "territory");
+        addFood(generation, null);
       }
       if (terr.assignedSoldiers > 0 && Math.random() < terr.assignedSoldiers * 0.01) {
         addGems(1);
@@ -604,7 +604,7 @@ function startGameLoop() {
         if (vwFoodAccum >= 1) {
           var addNow = Math.floor(vwFoodAccum);
           vwFoodAccum -= addNow;
-          addFood(addNow, null, "virtual");
+          addFood(addNow);
         }
       }
 
