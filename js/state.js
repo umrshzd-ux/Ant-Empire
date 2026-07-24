@@ -520,15 +520,16 @@ function loadGameData(data) {
   recalculateFoodCap();
 }
 
-// Core resource functions
-function addFood(amount, wp) {
+// Core resource functions – DEBUG VERSION
+function addFood(amount, wp, source) {
   amount = Math.floor(amount);
   if (amount <= 0) return;
   state.food = Math.min(state.food + amount, state.foodCap);
   state.lifetimeStats.totalFood = (state.lifetimeStats.totalFood || 0) + amount;
   updateDailyProgress('food300', amount);
-  // DEBUG: show the amount being added (remove after bug is found)
-  showToast("🔍 +" + amount + " food (fpt debug)", null);
+  // DEBUG TOAST – shows source and amount
+  var tag = source ? " [" + source + "]" : "";
+  showToast("🔍 +" + amount + " food" + tag);
   if (wp) {
     spawnFloater("+" + amount + "🌾", window.innerWidth/2, window.innerHeight/2, "#ffd27a");
     emitParticles(wp, 4, 0xffd27a, 0.04, 0.5, 0.3);
@@ -541,4 +542,4 @@ function addGems(amount) {
   state.totalGemsEarned += amount;
   state.lifetimeStats.totalGems = (state.lifetimeStats.totalGems || 0) + amount;
   showToast("+" + amount + "💎");
-    }
+                     }
