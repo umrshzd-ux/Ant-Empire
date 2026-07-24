@@ -61,10 +61,8 @@ function createWorker(golden, rareType, forceRender) {
   var w = { id: id, mesh: mesh, station: st, slotIndex: null, state: "TO_FOOD", path: pathToStation(st), pathIndex: 0, speed: baseSpeed * speedMult + Math.random() * 0.4, waitTimer: Math.random() * 1.5, carrying: false, foodIcon: null, eggIcon: null, targetScale: ws, rendered: true, personalOffset: (Math.random() - 0.5) * 0.6, isSoldier: false, isScout: false, carryingEgg: false, avoidTimer: 0, isGolden: golden || false, isRare: !!rareType, rareType: rareType, foodBonus: 0, _speedMult: speedMult };
   if (state.rallyActive) w.speed *= BAL.rallySpeedMultiplier;
 
-  // ----- Ant Class Integration -----
   var cls = typeof assignClass === 'function' ? assignClass("worker") : null;
   if (cls) applyClassBonuses(w, cls);
-  // Ensure foodBonus is never excessive
   if (typeof w.foodBonus !== 'number' || w.foodBonus > 100) w.foodBonus = 0;
 
   return w;
@@ -94,17 +92,15 @@ function updateWorker(w, dt) {
   var fpt = (state.food > state.foodCap * 0.5 ? diminishedFood : effectiveFood) + (w.foodBonus || 0);
   if (state.evolution.worker >= 1) fpt += EVOLUTION_TREE.worker.tiers[0].effect.foodBonus;
   var cfg = getCurrentZoneConfig(); if (cfg) fpt += cfg.foodBonus;
-  // Hard cap per trip to prevent runaway food
   if (fpt > 50) fpt = 3; // safety reset
   if (w.state === "AT_FOOD") { releaseStationSlot(w.station, w.slotIndex); w.slotIndex = null; w.waitTimer = 0.5; w.carrying = true; w.state = "TO_NEST"; setPathTarget(w, "NEST"); return; }
-  if (w.state === "AT_NEST") { addFood(fpt, NP.clone()); addStockpileCrumb(); storagePilesDirty = true; qgLight.intensity = 3; qgSphere.material.emissiveIntensity = 1.5; cLP = 1; w.carrying = false; w.dropAnimTimer = 0.4; w.waitTimer = 0.4; w.state = "TO_FOOD"; setPathTarget(w, "FOOD"); return; }
+  if (w.state === "AT_NEST") { addFood(fpt, NP.clone(), "worker"); addStockpileCrumb(); storagePilesDirty = true; qgLight.intensity = 3; qgSphere.material.emissiveIntensity = 1.5; cLP = 1; w.carrying = false; w.dropAnimTimer = 0.4; w.waitTimer = 0.4; w.state = "TO_FOOD"; setPathTarget(w, "FOOD"); return; }
   var raw = w.path[w.pathIndex]; if (!raw) return; var isF = w.pathIndex === w.path.length - 1; var target;
   if (isF) { if (w.state === "TO_FOOD") { if (w.slotIndex === null) w.slotIndex = claimStationSlot(w.station, w); var o = getStationSlotOffset(w.slotIndex); target = { x: raw.x + o.x, y: raw.y, z: raw.z + o.z }; } else target = { x: raw.x, y: raw.y, z: raw.z }; }
   else { var sgn = w.state === "TO_FOOD" ? 1 : -1; target = { x: raw.x, y: raw.y, z: raw.z + sgn * 0.5 + w.personalOffset }; }
   var p = w.mesh.position; var dx = target.x - p.x, dy = target.y - p.y, dz = target.z - p.z; var dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
   if (dist < 0.15) { w.pathIndex++; if (w.pathIndex >= w.path.length) w.state = w.state === "TO_FOOD" ? "AT_FOOD" : "AT_NEST"; return; }
   var step = Math.min(w.speed * dt, dist); p.x += (dx / dist) * step; p.y += (dy / dist) * step; p.z += (dz / dist) * step; w.mesh.rotation.y = Math.atan2(dx, dz);
-  // Subtle walking bounce + extra bounce when carrying food
   w.mesh.position.y += Math.sin(performance.now() / 90 + p.x * 5) * 0.008;
   if (w.carrying) {
     w.mesh.position.y += Math.sin(performance.now() / 80) * 0.015;
