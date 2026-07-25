@@ -21,6 +21,8 @@ html, body {
   -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
 }
 
+/* (all CSS unchanged – I'm including it fully for completeness) */
+
 /* ============================================================
    PARALLAX BACKGROUND LAYERS – REALISTIC CAVE (ENHANCED)
    ============================================================ */
@@ -29,7 +31,6 @@ html, body {
 }
 .bg-layer { position: absolute; top: 0; left: 0; width: 120%; height: 120%; will-change: transform; }
 
-/* Far depth – deep cave walls */
 #bg-far {
   background:
     radial-gradient(ellipse at 20% 25%, #1e1209 0%, transparent 40%),
@@ -38,7 +39,6 @@ html, body {
     linear-gradient(180deg, #1a0f07 0%, #0e0703 30%, #060302 60%, #030201 100%);
   z-index: 1;
 }
-/* Mid depth – soft rock formations, distant chambers */
 #bg-mid {
   background:
     radial-gradient(ellipse at 30% 45%, rgba(90,50,25,0.28) 0%, transparent 50%),
@@ -48,7 +48,6 @@ html, body {
     radial-gradient(ellipse at 20% 60%, rgba(255,140,30,0.1) 0%, transparent 15%);
   z-index: 2;
 }
-/* Near depth – pebbles, roots, ground details */
 #bg-near {
   background:
     radial-gradient(ellipse at 25% 80%, rgba(100,55,30,0.22) 0%, transparent 35%),
@@ -66,7 +65,6 @@ html, body {
   z-index: 3;
 }
 
-/* Detailed soil texture */
 #soil-texture {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 4;
   background-image:
@@ -94,7 +92,6 @@ html, body {
   opacity: 0.75;
 }
 
-/* Tunnels */
 #tunnels {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5;
   background:
@@ -106,7 +103,6 @@ html, body {
     radial-gradient(ellipse at 75% 62%, rgba(255,170,45,0.12) 0%, transparent 18%);
 }
 
-/* Tree roots */
 #roots {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 6;
   background:
@@ -116,7 +112,6 @@ html, body {
     linear-gradient(80deg, transparent 72%, rgba(50,25,12,0.4) 73%, rgba(65,32,16,0.5) 75%, transparent 76%);
 }
 
-/* God rays */
 #god-rays {
   position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 7;
   background:
@@ -131,7 +126,6 @@ html, body {
   100% { opacity: 0.7; transform: scale(1); }
 }
 
-/* Dust particles */
 #dust-layer { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 8; }
 .dust {
   position: absolute; background: radial-gradient(circle, rgba(255,200,140,0.3) 0%, transparent 70%);
@@ -145,13 +139,11 @@ html, body {
   100% { transform: translate(30px,-140px) scale(0.3); opacity: 0; }
 }
 
-/* Vignette */
 #vignette {
   position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 9;
   background: radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,0.75) 100%);
 }
 
-/* Cave glow */
 #cave-glow {
   position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 10;
   background:
@@ -165,18 +157,13 @@ html, body {
   100% { opacity: 1; }
 }
 
-/* ============================================================
-   CANVAS – FIXED FULLSCREEN
-   ============================================================ */
 #canvas-container {
   position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
   z-index: 11; display: none;
 }
 canvas { display: block; width: 100%; height: 100%; }
 
-/* ============================================================
-   HUD PILLS – REDESIGNED FOR MOBILE (PREMIUM LOOK)
-   ============================================================ */
+/* HUD PILLS */
 #hud {
   position: absolute; top: 0; left: 0; right: 0; display: flex;
   justify-content: space-between; align-items: flex-start; padding: 12px 16px;
@@ -199,9 +186,7 @@ canvas { display: block; width: 100%; height: 100%; }
 .icon-alert { background: #aa3333; }
 #top-left, #top-right { display: flex; flex-direction: column; gap: 8px; }
 
-/* ============================================================
-   ALERTS & RESOURCES DROPDOWNS
-   ============================================================ */
+/* ALERTS & RESOURCES DROPDOWNS */
 #alerts-panel, #resources-panel {
   position: absolute; z-index: 40;
   background: linear-gradient(160deg, rgba(35,20,10,0.98), rgba(15,8,3,0.98));
@@ -225,9 +210,7 @@ canvas { display: block; width: 100%; height: 100%; }
   cursor: pointer; font-size: 16px; line-height: 1;
 }
 
-/* ============================================================
-   BOTTOM BAR – PROFESSIONAL & SPACIOUS
-   ============================================================ */
+/* BOTTOM BAR */
 #bottom-bar {
   position: absolute; bottom: 0; left: 0; right: 0; display: flex;
   justify-content: center; gap: 10px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
@@ -248,7 +231,6 @@ canvas { display: block; width: 100%; height: 100%; }
 }
 .rally-btn .cooldown-overlay { pointer-events: none; }
 
-/* "More" panel – polished pop‑over */
 #more-panel {
   position: absolute; bottom: 90px; left: 50%; transform: translateX(-50%); z-index: 30;
   background: linear-gradient(160deg, rgba(40,22,12,0.98), rgba(18,9,4,0.98));
@@ -260,9 +242,7 @@ canvas { display: block; width: 100%; height: 100%; }
   justify-content: center;
 }
 
-/* ============================================================
-   SURGE / EVENT / SUMMON BUTTONS
-   ============================================================ */
+/* SURGE / EVENT / SUMMON BUTTONS */
 #surge-btn, #event-btn, #summon-btn {
   position: absolute; left: 50%; transform: translateX(-50%); padding: 14px 26px; border-radius: 26px;
   font-size: 16px; font-weight: 700; z-index: 25; pointer-events: auto; display: none; cursor: pointer;
@@ -283,9 +263,7 @@ canvas { display: block; width: 100%; height: 100%; }
   border: 2px solid #cc0000; color: #fff; box-shadow: 0 4px 20px rgba(200,50,50,0.4);
 }
 
-/* ============================================================
-   BOSS HEALTH BAR
-   ============================================================ */
+/* BOSS HEALTH BAR */
 #boss-health-bar {
   position: absolute; top: 50px; left: 50%; transform: translateX(-50%); width: 260px; height: 12px;
   background: rgba(0,0,0,0.85); border: 1px solid #cc0000; border-radius: 6px; overflow: hidden;
@@ -297,9 +275,7 @@ canvas { display: block; width: 100%; height: 100%; }
   z-index: 25; display: none; text-shadow: 0 0 8px rgba(255,0,0,0.6); color: #ff6666;
 }
 
-/* ============================================================
-   LOADING SCREEN
-   ============================================================ */
+/* LOADING SCREEN */
 #loading {
   position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 200;
   background: radial-gradient(ellipse at 50% 25%, #3a2010 0%, #0a0502 80%);
@@ -318,9 +294,7 @@ canvas { display: block; width: 100%; height: 100%; }
 @keyframes shimmerBar { 0% { background-position: 0% 0%; } 100% { background-position: 200% 0%; } }
 #loading .loading-msg { color: #aa8855; font-size: 14px; font-weight: 500; }
 
-/* ============================================================
-   MAIN MENU – PREMIUM 2026 REDESIGN
-   ============================================================ */
+/* MAIN MENU */
 #main-menu {
   position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 60;
   display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
@@ -348,7 +322,6 @@ canvas { display: block; width: 100%; height: 100%; }
   margin-bottom: 30px;
 }
 
-/* Colony Cards – 3D glass panels */
 .save-slot {
   width: 320px;
   background: linear-gradient(180deg, rgba(55,30,15,0.85) 0%, rgba(25,12,6,0.9) 100%);
@@ -400,7 +373,6 @@ canvas { display: block; width: 100%; height: 100%; }
   cursor: pointer;
 }
 
-/* Action buttons inside card – wider, nowrap */
 .slot-action-btn {
   padding: 10px 16px;
   border-radius: 12px;
@@ -421,7 +393,6 @@ canvas { display: block; width: 100%; height: 100%; }
 .delete-colony-btn { background: linear-gradient(180deg, #ff8080, #cc3333); color: #fff; }
 .delete-colony-btn:active { transform: scale(0.95); }
 
-/* Menu Buttons – 3D metallic */
 .menu-btn {
   padding: 18px 40px; border: none; border-radius: 18px;
   background: linear-gradient(180deg, #f3d08c 0%, #c48e4a 40%, #9b6b2e 100%);
@@ -459,9 +430,6 @@ canvas { display: block; width: 100%; height: 100%; }
     inset 0 -1px 0 rgba(255,255,200,0.3);
 }
 
-/* ============================================================
-   FLOATING PANELS – 3D GLASS CARDS
-   ============================================================ */
 .overlay-panel {
   position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
   background: linear-gradient(160deg, rgba(35,20,10,0.97), rgba(15,8,3,0.97));
@@ -513,9 +481,6 @@ canvas { display: block; width: 100%; height: 100%; }
 .roadmap-milestone { padding: 8px 10px; background: rgba(255,255,255,0.04); border-radius: 14px; font-size: 14px; color: #f3e3c4; display: flex; justify-content: space-between; align-items: center; }
 .roadmap-milestone.unlocked { background: rgba(100,255,100,0.1); border: 1px solid rgba(100,255,100,0.3); }
 
-/* ============================================================
-   MODAL OVERLAYS – PREMIUM POPUPS
-   ============================================================ */
 .modal-overlay {
   position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 80;
   background: rgba(0,0,0,0.85); display: none; flex-direction: column; align-items: center; justify-content: center;
@@ -568,7 +533,6 @@ canvas { display: block; width: 100%; height: 100%; }
 .modal-btn.primary { background: linear-gradient(180deg, #ffb84d, #e69500); color: #1a1208; box-shadow: 0 8px 24px rgba(255,170,50,0.4), 0 4px 12px rgba(0,0,0,0.5); }
 .modal-btn.secondary { background: linear-gradient(180deg, #666, #3a3a3a); color: #ddd; margin-top: 10px; }
 
-/* Rename input */
 #rename-input {
   width: 100%;
   padding: 12px;
@@ -587,9 +551,6 @@ canvas { display: block; width: 100%; height: 100%; }
   box-shadow: 0 0 10px rgba(255,180,0,0.3);
 }
 
-/* ============================================================
-   BOTTOM GAME PANELS (build, upgrade, shop, etc.)
-   ============================================================ */
 .game-panel {
   position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
   background: linear-gradient(160deg, rgba(35,20,10,0.97), rgba(15,8,3,0.97));
@@ -629,9 +590,6 @@ canvas { display: block; width: 100%; height: 100%; }
 .panel-option button:active { transform: scale(0.92); box-shadow: 0 1px 4px rgba(0,0,0,0.6), inset 0 2px 6px rgba(0,0,0,0.3); }
 .panel-option button:disabled { background: #555; color: #999; cursor: default; box-shadow: none; }
 
-/* ============================================================
-   TOASTS & FLOATERS
-   ============================================================ */
 #floaters { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 15; }
 .floater { position: absolute; color: #ffe9a8; font-weight: 800; font-size: 15px; text-shadow: 0 1px 4px rgba(0,0,0,0.8); animation: floatUp 1.0s ease-out forwards; }
 @keyframes floatUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-44px); opacity: 0; } }
@@ -639,9 +597,16 @@ canvas { display: block; width: 100%; height: 100%; }
 #achievement-toast { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(20,10,0,0.96); border: 2px solid #ffd27a; color: #ffd27a; padding: 18px 26px; border-radius: 18px; font-size: 16px; font-weight: 800; z-index: 90; pointer-events: none; text-align: center; opacity: 0; transition: opacity 0.4s ease; display: flex; flex-direction: column; align-items: center; gap: 6px; box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 30px rgba(255,200,100,0.3); }
 #tutorial-toast { position: absolute; bottom: 140px; left: 50%; transform: translateX(-50%); background: rgba(20,10,0,0.94); border: 2px solid #ffaa33; color: #ffd27a; padding: 14px 22px; border-radius: 16px; font-size: 15px; font-weight: 700; z-index: 35; pointer-events: none; text-align: center; opacity: 0; transition: opacity 0.5s ease; max-width: 280px; box-shadow: 0 14px 32px rgba(0,0,0,0.6); }
 
-/* ============================================================
-   SHOP CATEGORY TABS
-   ============================================================ */
+/* ===== DEBUG PANEL ===== */
+#debug-food {
+  position: fixed; top: 10px; left: 10px; z-index: 200;
+  background: rgba(0,0,0,0.85); color: #0f0; font-size: 11px; padding: 6px 8px;
+  border: 1px solid #0f0; border-radius: 6px;
+  max-width: 180px; pointer-events: none;
+  display: none;
+}
+#debug-food .line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 .shop-category-tabs {
   display: flex; justify-content: center; gap: 4px; margin-bottom: 8px;
 }
@@ -733,7 +698,7 @@ canvas { display: block; width: 100%; height: 100%; }
 <!-- ASCENSION -->
 <div id="ascension-panel" class="overlay-panel"><div class="panel-title">⬆️ Ascension</div><div id="ascension-content"></div><button class="menu-btn" onclick="document.getElementById('ascension-panel').style.display='none'">Close</button></div>
 
-<!-- ========== DECLUTTERED HUD ========== -->
+<!-- ========== HUD ========== -->
 <div id="hud" style="display:none">
   <div id="top-left">
     <div class="resource-pill"><div class="resource-icon icon-food">🌾</div><span id="food-count">0</span>/<span id="food-cap">60</span></div>
@@ -748,13 +713,13 @@ canvas { display: block; width: 100%; height: 100%; }
   </div>
 </div>
 
-<!-- Alerts dropdown (with close button) -->
+<!-- Alerts dropdown -->
 <div id="alerts-panel">
   <button class="panel-close-btn" id="alerts-close-btn">✖</button>
   <div id="alerts-content"></div>
 </div>
 
-<!-- Resources popup (with close button) -->
+<!-- Resources popup -->
 <div id="resources-panel">
   <button class="panel-close-btn" id="resources-close-btn">✖</button>
   <div class="resource-row"><span>🥚 Eggs</span><span id="res-eggs">0</span></div>
@@ -765,7 +730,7 @@ canvas { display: block; width: 100%; height: 100%; }
   <div class="resource-row"><span>⭐ Level</span><span id="res-level">1</span></div>
 </div>
 
-<!-- Bottom bar – only primary actions + More button -->
+<!-- Bottom bar -->
 <div id="bottom-bar" style="display:none">
   <div class="cam-btn" id="btn-view">🏠 View</div>
   <div class="build-btn" id="btn-build">🔨Build</div>
@@ -775,7 +740,7 @@ canvas { display: block; width: 100%; height: 100%; }
   <div class="build-btn" id="btn-more">☰ More</div>
 </div>
 
-<!-- "More" panel for secondary actions -->
+<!-- More panel -->
 <div id="more-panel">
   <button class="build-btn" id="btn-evolution" style="display:none">🧬Evolve</button>
   <button class="build-btn" id="btn-achievements">🏆Feats</button>
@@ -878,36 +843,45 @@ canvas { display: block; width: 100%; height: 100%; }
 <!-- Background music -->
 <audio id="bg-music" loop style="display:none"></audio>
 
-<!-- ============================================================
-   SCRIPTS – EXACT DEPENDENCY ORDER (audio.js removed)
-   ============================================================ -->
-<script src="js/three.min.js?v=clean2"></script>
-<script src="js/config.js?v=clean2"></script>
-<script src="js/state.js?v=clean2"></script>
-<script src="js/terrain.js?v=clean2"></script>
-<script src="js/discoveries.js?v=clean2"></script>
-<script src="js/goals.js?v=clean2"></script>
-<script src="js/biomes.js?v=clean2"></script>
-<script src="js/antclasses.js?v=clean2"></script>
-<script src="js/rivals.js?v=clean2"></script>
-<script src="js/royalchamber.js?v=clean2"></script>
-<script src="js/scouts.js?v=clean2"></script>
-<script src="js/buildings.js?v=clean2"></script>
-<script src="js/research.js?v=clean2"></script>
-<script src="js/bosses.js?v=clean2"></script>
-<script src="js/camera.js?v=clean2"></script>
-<script src="js/chambers.js?v=clean2"></script>
-<script src="js/ants.js?v=clean2"></script>
-<script src="js/enemies.js?v=clean2"></script>
-<script src="js/combat.js?v=clean2"></script>
-<script src="js/abilities.js?v=clean2"></script>
-<script src="js/main.js?v=clean2"></script>
-<script src="js/ui.js?v=clean2"></script>
-<script src="js/shop.js?v=clean2"></script>
-<script src="js/upgrades.js?v=clean2"></script>
+<!-- ===== DEBUG FOOD PANEL ===== -->
+<div id="debug-food">
+  <div class="line" id="debug-line-0">--</div>
+  <div class="line" id="debug-line-1">--</div>
+  <div class="line" id="debug-line-2">--</div>
+  <div class="line" id="debug-line-3">--</div>
+  <div class="line" id="debug-line-4">--</div>
+</div>
 
 <!-- ============================================================
-   INLINE SCRIPTS (must run after all external scripts)
+   SCRIPTS – EXACT DEPENDENCY ORDER
+   ============================================================ -->
+<script src="js/three.min.js?v=debug"></script>
+<script src="js/config.js?v=debug"></script>
+<script src="js/state.js?v=debug"></script>
+<script src="js/terrain.js?v=debug"></script>
+<script src="js/discoveries.js?v=debug"></script>
+<script src="js/goals.js?v=debug"></script>
+<script src="js/biomes.js?v=debug"></script>
+<script src="js/antclasses.js?v=debug"></script>
+<script src="js/rivals.js?v=debug"></script>
+<script src="js/royalchamber.js?v=debug"></script>
+<script src="js/scouts.js?v=debug"></script>
+<script src="js/buildings.js?v=debug"></script>
+<script src="js/research.js?v=debug"></script>
+<script src="js/bosses.js?v=debug"></script>
+<script src="js/camera.js?v=debug"></script>
+<script src="js/chambers.js?v=debug"></script>
+<script src="js/ants.js?v=debug"></script>
+<script src="js/enemies.js?v=debug"></script>
+<script src="js/combat.js?v=debug"></script>
+<script src="js/abilities.js?v=debug"></script>
+<script src="js/main.js?v=debug"></script>
+<script src="js/ui.js?v=debug"></script>
+<script src="js/shop.js?v=debug"></script>
+<script src="js/upgrades.js?v=debug"></script>
+
+<!-- ============================================================
+   INLINE SCRIPTS
    ============================================================ -->
 <script>
 // ===== DUST PARTICLES =====
@@ -971,7 +945,6 @@ window.onerror = function(msg, url, line) {
   return true;
 };
 
-// ===== VISUAL VIEWPORT RESIZE (fixes landscape half-screen issue) =====
 function handleViewportResize() {
   if (typeof renderer === 'undefined' || typeof camera === 'undefined') return;
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -1018,4 +991,4 @@ if (window.visualViewport) {
 })();
 </script>
 </body>
-   </html>
+     </html>
