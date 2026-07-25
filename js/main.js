@@ -171,6 +171,13 @@ window.newColony = function(slot) {
   currentSlot = slot;
   state.lastSaveTime = Date.now();   // prevent offline progress
   state.lastTime = performance.now();
+
+  // RESET GLOBAL ACCUMULATORS (fixes instant food fill)
+  vwFoodAccum = 0;
+  eLC = 0; sC = 0; cLP = 0;
+  storageUpdateCounter = 0; achCheckAccumulator = 0;
+  workerRebalanceAccumulator = 0; tutorialCheckAccumulator = 0;
+
   hideMainMenu();
   initGameSystems();
   startGameLoop();
@@ -265,6 +272,12 @@ window.loadSlot = function(slot) {
 
   state.lastSaveTime = Date.now();
   state.lastTime = performance.now();
+
+  // RESET GLOBAL ACCUMULATORS (prevents carry‑over)
+  vwFoodAccum = 0;
+  eLC = 0; sC = 0; cLP = 0;
+  storageUpdateCounter = 0; achCheckAccumulator = 0;
+  workerRebalanceAccumulator = 0; tutorialCheckAccumulator = 0;
 
   hideMainMenu();
   initGameSystems();
