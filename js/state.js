@@ -56,8 +56,7 @@ var SaveManager = {};
 
 var currentSlot = 0;
 
-// Internal food value (will be hidden behind getter/setter)
-var _food = 60;
+var _food = 60;   // internal value
 
 var state = {
   colonyName: "Colony 1",
@@ -66,29 +65,11 @@ var state = {
     var old = _food;
     var diff = val - old;
     _food = val;
-    // Catch large changes (>10) and show toast
-    if (Math.abs(diff) > 10) {
-      showToast("⚠ Food changed by " + (diff>0?'+':'') + diff);
+    // Only show toast for truly large jumps (>100)
+    if (Math.abs(diff) > 100) {
+      showToast("⚠ HUGE FOOD CHANGE " + (diff>0?'+':'') + diff);
     }
-    // Update debug panel for any change
-    if (typeof _debugFoodLog !== 'undefined') {
-      _debugFoodLog.unshift({ amt: diff, src: 'direct', time: Date.now() });
-      if (_debugFoodLog.length > 5) _debugFoodLog.length = 5;
-      var panel = document.getElementById('debug-food');
-      if (panel) {
-        panel.style.display = 'block';
-        for (var i = 0; i < 5; i++) {
-          var line = document.getElementById('debug-line-' + i);
-          if (line) {
-            if (_debugFoodLog[i]) {
-              line.textContent = (_debugFoodLog[i].amt>=0?'+':'') + _debugFoodLog[i].amt + ' [' + _debugFoodLog[i].src + ']';
-            } else {
-              line.textContent = '--';
-            }
-          }
-        }
-      }
-    }
+    // Note: debug panel is now updated ONLY from addFood, not from the setter
   },
   gems: 0, foodCap: 60, level: 1, xp: 0, xpToNext: 40, eggs: 0,
   eggLayTime: 10, hatchTime: 10,
@@ -542,22 +523,21 @@ function loadGameData(data) {
   recalculateFoodCap();
 }
 
-// ---- DEBUG: last 5 food additions ----
+// ---- DEBUG: last 5 food additions (updated ONLY by addFood) ----
 var _debugFoodLog = [];
 
 function addFood(amount, wp, source) {
   amount = Math.floor(amount);
   if (amount <= 0) return;
   var newVal = Math.min(state.food + amount, state.foodCap);
-  // Use the setter, which will log large changes and update debug panel
-  state.food = newVal;
+  state.food = newVal;   // triggers setter (large jumps will toast)
   state.lifetimeStats.totalFood = (state.lifetimeStats.totalFood || 0) + amount;
   updateDailyProgress('food300', amount);
 
-  // Also track in debug log (even though setter does it for large, we keep for all)
-  var src = source || 'addFood';
+  var src = source || 'unknown';
   _debugFoodLog.unshift({ amt: amount, src: src, time: Date.now() });
   if (_debugFoodLog.length > 5) _debugFoodLog.length = 5;
+
   var panel = document.getElementById('debug-food');
   if (panel) {
     panel.style.display = 'block';
