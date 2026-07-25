@@ -523,13 +523,37 @@ function loadGameData(data) {
   recalculateFoodCap();
 }
 
-// Core resource functions
-function addFood(amount, wp) {
+// ---- DEBUG: last 5 food additions ----
+var _debugFoodLog = [];
+
+function addFood(amount, wp, source) {
   amount = Math.floor(amount);
   if (amount <= 0) return;
   state.food = Math.min(state.food + amount, state.foodCap);
   state.lifetimeStats.totalFood = (state.lifetimeStats.totalFood || 0) + amount;
   updateDailyProgress('food300', amount);
+
+  // Track source
+  var src = source || 'unknown';
+  _debugFoodLog.unshift({ amt: amount, src: src, time: Date.now() });
+  if (_debugFoodLog.length > 5) _debugFoodLog.length = 5;
+
+  // Update debug panel
+  var panel = document.getElementById('debug-food');
+  if (panel) {
+    panel.style.display = 'block';
+    for (var i = 0; i < 5; i++) {
+      var line = document.getElementById('debug-line-' + i);
+      if (line) {
+        if (_debugFoodLog[i]) {
+          line.textContent = '+' + _debugFoodLog[i].amt + ' [' + _debugFoodLog[i].src + ']';
+        } else {
+          line.textContent = '--';
+        }
+      }
+    }
+  }
+
   if (wp) {
     spawnFloater("+" + amount + "🌾", window.innerWidth/2, window.innerHeight/2, "#ffd27a");
     emitParticles(wp, 4, 0xffd27a, 0.04, 0.5, 0.3);
@@ -542,4 +566,4 @@ function addGems(amount) {
   state.totalGemsEarned += amount;
   state.lifetimeStats.totalGems = (state.lifetimeStats.totalGems || 0) + amount;
   showToast("+" + amount + "💎");
-                     }
+    }
