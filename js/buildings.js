@@ -300,6 +300,7 @@ function enqueueBuild(type) {
     timeRemaining: (BAL.buildTimes && BAL.buildTimes[type]) ? BAL.buildTimes[type] : 5,
     totalTime: (BAL.buildTimes && BAL.buildTimes[type]) ? BAL.buildTimes[type] : 5
   });
+  showToast("📦 Build queued: " + type); // DEBUG
   updateBuildButtonLabels();
   refreshBuildQueueUI();
   refreshHUD();
@@ -333,4 +334,4 @@ function getBuilderBuildSpeedBonus() {
     }
   }
   return 0;
-                                }
+                        }
