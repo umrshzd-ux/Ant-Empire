@@ -724,7 +724,7 @@ function startGameLoop() {
       }
     } catch(e) { console.error('Weather error:', e); }
 
-    // ---- Surge, soldier respawn ----
+    // ---- Surge, soldier respawn (with surge fix) ----
     try {
       if (!state.surgeActive) {
         state.surgeTimer -= dt;
@@ -732,7 +732,13 @@ function startGameLoop() {
           state.surgeActive = true; surgeBtn.style.display = "block";
           qgLight.intensity = 6; qgSphere.material.emissiveIntensity = 3;
           state.surgeTimer = BAL.surgeIntervalMin + Math.random() * (BAL.surgeIntervalMax - BAL.surgeIntervalMin);
-          setTimeout(function() { if (state.surgeActive) { state.surgeActive = false; surgeBtn.style.display = "none"; } }, BAL.surgeDuration * 1000);
+          clearTimeout(state._surgeTimeout);
+          state._surgeTimeout = setTimeout(function() {
+            if (state.surgeActive) {
+              state.surgeActive = false;
+              surgeBtn.style.display = "none";
+            }
+          }, BAL.surgeDuration * 1000);
         }
       }
       if (state.deadSoldiers > 0) { state.soldierRespawnTimer -= dt; if (state.soldierRespawnTimer <= 0) respawnSoldier(); }
