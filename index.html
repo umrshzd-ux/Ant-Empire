@@ -21,6 +21,7 @@ html, body {
   -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
 }
 
+/* (all CSS unchanged – I'm including the full style block for completeness) */
 /* ============================================================
    PARALLAX BACKGROUND LAYERS – REALISTIC CAVE (ENHANCED)
    ============================================================ */
@@ -653,16 +654,14 @@ canvas { display: block; width: 100%; height: 100%; }
   background: rgba(200,150,80,0.3); color: #fff; border-color: #ffb700;
 }
 
-/* ===== DEBUG PANEL – moved to RIGHT side ===== */
-#debug-food {
-  position: fixed; top: 10px; right: 10px; left: auto;   /* <-- changed to right */
-  z-index: 200;
-  background: rgba(0,0,0,0.85); color: #0f0; font-size: 11px; padding: 6px 8px;
-  border: 1px solid #0f0; border-radius: 6px;
-  max-width: 180px; pointer-events: none;
-  display: none;
+/* ===== LIVE ERROR DISPLAY ===== */
+#live-error {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  background: rgba(200,0,0,0.95); color: #fff; padding: 18px 24px;
+  border-radius: 12px; font-size: 14px; font-weight: 700;
+  z-index: 300; display: none; max-width: 90vw;
+  text-align: center; box-shadow: 0 0 20px rgba(255,0,0,0.5);
 }
-#debug-food .line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 </style>
 </head>
 <body>
@@ -889,14 +888,8 @@ canvas { display: block; width: 100%; height: 100%; }
 <!-- Background music -->
 <audio id="bg-music" loop style="display:none"></audio>
 
-<!-- ===== DEBUG FOOD PANEL (RIGHT SIDE) ===== -->
-<div id="debug-food">
-  <div class="line" id="debug-line-0">--</div>
-  <div class="line" id="debug-line-1">--</div>
-  <div class="line" id="debug-line-2">--</div>
-  <div class="line" id="debug-line-3">--</div>
-  <div class="line" id="debug-line-4">--</div>
-</div>
+<!-- ===== LIVE ERROR DISPLAY ===== -->
+<div id="live-error"></div>
 
 <!-- ============================================================
    SCRIPTS – EXACT DEPENDENCY ORDER
@@ -927,10 +920,114 @@ canvas { display: block; width: 100%; height: 100%; }
 <script src="js/upgrades.js?v=final"></script>
 
 <!-- ============================================================
-   INLINE SCRIPTS (unchanged)
+   INLINE SCRIPTS
    ============================================================ -->
 <script>
-// … (same as before)
+// ===== DUST PARTICLES =====
+(function(){
+  var dust=document.getElementById('dust-layer');
+  for(var i=0;i<20;i++){
+    var p=document.createElement('div');
+    p.className='dust';
+    var s=2+Math.random()*5;
+    p.style.width=s+'px';p.style.height=s+'px';
+    p.style.left=Math.random()*100+'%';
+    p.style.top=Math.random()*100+'%';
+    p.style.animationDuration=10+Math.random()*14+'s';
+    p.style.animationDelay=Math.random()*10+'s';
+    dust.appendChild(p);
+  }
+})();
+
+// ===== PARALLAX =====
+(function(){
+  var far=document.getElementById('bg-far'), mid=document.getElementById('bg-mid'), near=document.getElementById('bg-near');
+  var ox=0,oy=0;
+  document.addEventListener('mousemove',function(e){ ox=(e.clientX/window.innerWidth-0.5)*20; oy=(e.clientY/window.innerHeight-0.5)*20; });
+  document.addEventListener('touchmove',function(e){ if(e.touches.length>0){ ox=(e.touches[0].clientX/window.innerWidth-0.5)*20; oy=(e.touches[0].clientY/window.innerHeight-0.5)*20; } },{passive:true});
+  function anim(){
+    ox+=(0-ox)*0.03; oy+=(0-oy)*0.03;
+    if(far)far.style.transform='translate('+(ox*0.15)+'px,'+(oy*0.15)+'px)';
+    if(mid)mid.style.transform='translate('+(ox*0.3)+'px,'+(oy*0.3)+'px)';
+    if(near)near.style.transform='translate('+(ox*0.5)+'px,'+(oy*0.5)+'px)';
+    requestAnimationFrame(anim);
+  }
+  anim();
+})();
+
+// Global functions for main menu buttons
+window.openStats = function() {
+  document.getElementById('stats-panel').style.display = 'flex';
+  if (typeof refreshStatsUI === 'function') refreshStatsUI();
+};
+window.openRoadmap = function() {
+  document.getElementById('roadmap-panel').style.display = 'flex';
+  if (typeof refreshRoadmapUI === 'function') refreshRoadmapUI();
+};
+window.openHowToPlay = function() {
+  document.getElementById('howtoplay-panel').style.display = 'flex';
+};
+window.openSettings = function() {
+  document.getElementById('settings-panel').style.display = 'flex';
+};
+
+// ===== CATCH ALL ERRORS AND DISPLAY THEM ON SCREEN =====
+window.onerror = function(msg, url, line) {
+  var el = document.getElementById('live-error');
+  if (el) {
+    el.style.display = 'block';
+    el.innerHTML = '❌ ERROR<br><b>' + msg + '</b><br><small>' + (url||'') + ' (line ' + line + ')</small>';
+  }
+  return true;
+};
+
+// ===== VISUAL VIEWPORT RESIZE =====
+function handleViewportResize() {
+  if (typeof renderer === 'undefined' || typeof camera === 'undefined') return;
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+window.addEventListener('resize', handleViewportResize);
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', handleViewportResize);
+}
+
+// Startup
+(function() {
+  var ld = document.getElementById('loading');
+  var bar = document.getElementById('progress-fill');
+  var msg = document.getElementById('loading-msg');
+
+  if (typeof THREE === 'undefined') {
+    var el = document.getElementById('live-error');
+    if (el) {
+      el.style.display = 'block';
+      el.textContent = '❌ Three.js not loaded – check js/three.min.js';
+    }
+    return;
+  }
+
+  try {
+    GameSettings.init();
+    AudioManager.init();
+  } catch(e) {
+    var el = document.getElementById('live-error');
+    if (el) {
+      el.style.display = 'block';
+      el.textContent = '❌ Startup error: ' + e.toString();
+    }
+    return;
+  }
+
+  initResearch();
+  initGoals();
+  showMainMenu();
+
+  if (ld) ld.style.display = 'none';
+  if (bar) bar.style.width = '100%';
+  if (msg) msg.textContent = 'Ready!';
+})();
 </script>
 </body>
    </html>
