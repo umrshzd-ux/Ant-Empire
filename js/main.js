@@ -561,7 +561,6 @@ function buyAscensionUpgrade(id) {
 // ----- Main loop (with all new systems integrated) -----
 var eLC = 0, sC = 0, cLP = 0, storageUpdateCounter = 0, achCheckAccumulator = 0, workerRebalanceAccumulator = 0, tutorialCheckAccumulator = 0, animFrameId = null;
 var vwFoodAccum = 0;
-var _buildDebugTimer = 0;  // DEBUG: timer for build‑queue toasts
 
 function startGameLoop() {
   gameLoopActive = true;
@@ -605,32 +604,20 @@ function startGameLoop() {
         if (vwFoodAccum >= 1) {
           var addNow = Math.floor(vwFoodAccum);
           vwFoodAccum -= addNow;
-          addFood(addNow);
+          addFood(addNow, null, "virtual");
         }
       }
 
       if (state.earlyGameBoost > 0) { state.earlyGameBoost -= dt; if (state.earlyGameBoost <= 0) { state.earlyGameBoost = 0; updateEggLayTime(); } }
 
-      // ---- Build queue processing ----
       if (state.buildQueue.length > 0) {
         var currentBuild = state.buildQueue[0];
         var buildSpeed = 1 + (typeof getBuilderBuildSpeedBonus === 'function' ? getBuilderBuildSpeedBonus() : 0);
         currentBuild.timeRemaining -= dt * buildSpeed;
-
-        // DEBUG toast every second
-        _buildDebugTimer += dt;
-        if (_buildDebugTimer >= 1) {
-          _buildDebugTimer = 0;
-          showToast("⏳ Building " + currentBuild.type + " (" + Math.ceil(currentBuild.timeRemaining) + "s left)");
-        }
-
         if (currentBuild.timeRemaining <= 0) {
           constructBuilding(currentBuild.type);
           state.buildQueue.shift();
-          showToast("✅ Build finished: " + currentBuild.type);
         }
-      } else {
-        _buildDebugTimer = 0;  // reset timer when queue empty
       }
     } catch(e) { console.error('General update error:', e); }
 
@@ -745,7 +732,14 @@ function startGameLoop() {
           state.surgeActive = true; surgeBtn.style.display = "block";
           qgLight.intensity = 6; qgSphere.material.emissiveIntensity = 3;
           state.surgeTimer = BAL.surgeIntervalMin + Math.random() * (BAL.surgeIntervalMax - BAL.surgeIntervalMin);
-          setTimeout(function() { if (state.surgeActive) { state.surgeActive = false; surgeBtn.style.display = "none"; } }, BAL.surgeDuration * 1000);
+          // Force hide after surgeDuration seconds
+          clearTimeout(state._surgeTimeout);
+          state._surgeTimeout = setTimeout(function() {
+            if (state.surgeActive) {
+              state.surgeActive = false;
+              surgeBtn.style.display = "none";
+            }
+          }, BAL.surgeDuration * 1000);
         }
       }
       if (state.deadSoldiers > 0) { state.soldierRespawnTimer -= dt; if (state.soldierRespawnTimer <= 0) respawnSoldier(); }
