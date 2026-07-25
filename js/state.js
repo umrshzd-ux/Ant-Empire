@@ -55,8 +55,42 @@ var SaveManager = {};
 })(SaveManager);
 
 var currentSlot = 0;
+
+// Internal food value (will be hidden behind getter/setter)
+var _food = 60;
+
 var state = {
-  colonyName: "Colony 1", food: 60, gems: 0, foodCap: 60, level: 1, xp: 0, xpToNext: 40, eggs: 0,
+  colonyName: "Colony 1",
+  get food() { return _food; },
+  set food(val) {
+    var old = _food;
+    var diff = val - old;
+    _food = val;
+    // Catch large changes (>10) and show toast
+    if (Math.abs(diff) > 10) {
+      showToast("⚠ Food changed by " + (diff>0?'+':'') + diff);
+    }
+    // Update debug panel for any change
+    if (typeof _debugFoodLog !== 'undefined') {
+      _debugFoodLog.unshift({ amt: diff, src: 'direct', time: Date.now() });
+      if (_debugFoodLog.length > 5) _debugFoodLog.length = 5;
+      var panel = document.getElementById('debug-food');
+      if (panel) {
+        panel.style.display = 'block';
+        for (var i = 0; i < 5; i++) {
+          var line = document.getElementById('debug-line-' + i);
+          if (line) {
+            if (_debugFoodLog[i]) {
+              line.textContent = (_debugFoodLog[i].amt>=0?'+':'') + _debugFoodLog[i].amt + ' [' + _debugFoodLog[i].src + ']';
+            } else {
+              line.textContent = '--';
+            }
+          }
+        }
+      }
+    }
+  },
+  gems: 0, foodCap: 60, level: 1, xp: 0, xpToNext: 40, eggs: 0,
   eggLayTime: 10, hatchTime: 10,
   workerCount: 4, soldierCount: 0, scoutCount: 0, lastTime: 0, lastSaveTime: 0,
   chambers: { foodStorage: { count: 0, bonusCap: 0 }, nursery: { count: 0, hatchReduction: 0 },
@@ -147,10 +181,10 @@ var state = {
   _pendingTerritoryClaim: false,
   _pendingLegacyScout: false
 };
+
 var queenScale = BAL.queenBaseScale;
 state.lastTime = performance.now();
 state.lastSaveTime = Date.now();
-// Ensure foodCap is never stuck at a low value (legacy saves may have 30)
 state.foodCap = BAL.baseFoodCap;
 state.eggLayTime = BAL.baseEggLayTime;
 state.surgeTimer = BAL.surgeIntervalMin + Math.random() * (BAL.surgeIntervalMax - BAL.surgeIntervalMin);
@@ -164,7 +198,7 @@ state.xpToNext = Math.floor(40 * Math.pow(1.15, state.level - 1));
 function resetStateToDefault(slot) {
   var prevGemUpgrades = state.gemUpgrades;
   state.colonyName = "Colony " + (slot + 1);
-  state.food = BAL.baseFoodCap; state.gems = 0; state.foodCap = BAL.baseFoodCap;
+  _food = BAL.baseFoodCap; state.gems = 0; state.foodCap = BAL.baseFoodCap;
   state.level = 1; state.xp = 0; state.xpToNext = Math.floor(40 * Math.pow(1.15, 0));
   state.eggs = 0; state.workerCount = 4; state.soldierCount = 0; state.scoutCount = 0;
   state.lastTime = performance.now(); state.lastSaveTime = Date.now();
@@ -412,8 +446,9 @@ function saveGame() {
 }
 function loadGameData(data) {
   if (!data) return;
-  var nk = ["food","gems","foodCap","level","xp","xpToNext","eggs","workerCount","soldierCount","scoutCount","deadSoldiers","expansionTrips","unlockedZones","rareAntCount","nestEvolutionLevel","totalHatched","totalKills","totalGemsEarned","dailyStreak","earlyGameBoost","survivedNight","rallyUses","surgesCollected","virtualWorkers","bossKills","bossTimer","beetleKills","waspKills","prestigeCount","prestigePoints","colonyName","queenClicks","prestigeStartTime","prestigeStartLevel","prestigeFoodBonus"];
+  var nk = ["gems","foodCap","level","xp","xpToNext","eggs","workerCount","soldierCount","scoutCount","deadSoldiers","expansionTrips","unlockedZones","rareAntCount","nestEvolutionLevel","totalHatched","totalKills","totalGemsEarned","dailyStreak","earlyGameBoost","survivedNight","rallyUses","surgesCollected","virtualWorkers","bossKills","bossTimer","beetleKills","waspKills","prestigeCount","prestigePoints","colonyName","queenClicks","prestigeStartTime","prestigeStartLevel","prestigeFoodBonus"];
   for (var i = 0; i < nk.length; i++) { var k = nk[i]; if (data[k] !== undefined) state[k] = data[k]; }
+  if (data.food !== undefined) _food = data.food;
   if (data.chambers) state.chambers = data.chambers;
   if (!state.chambers.royal) state.chambers.royal = { count: 0 };
   if (data.upgrades) state.upgrades = data.upgrades;
@@ -426,21 +461,12 @@ function loadGameData(data) {
     }
     state.achievementsClaimed = migrated;
   }
-  var oldToNew = { hatch10: "hatch", kill10: "spider", level5: "level", food1k: "storage", hatch50: "hatch", kill50: "spider", level15: "level", allChambers: "builder", hatch100: "hatch", level30: "level", rare3: "rare", garden: "explorer", nightOwl: "night", speedDemon: "speed", surgeMaster: "surge", gem20: "gem", boss1: "boss", prestige1: "prestige" };
-  for (var oldKey in oldToNew) {
-    var newKey = oldToNew[oldKey];
-    if (state.achievementsClaimed[oldKey] && !state.achievementsClaimed[newKey]) {
-      state.achievementsClaimed[newKey] = state.achievementsClaimed[oldKey];
-      delete state.achievementsClaimed[oldKey];
-    }
-  }
   validateAchievements();
   if (data.queenScale !== undefined) queenScale = data.queenScale;
   if (data.lastLoginDay !== undefined) state.lastLoginDay = data.lastLoginDay;
   if (data.lastSaveTime) state.lastSaveTime = data.lastSaveTime;
   if (data.evolution) state.evolution = data.evolution;
   if (data.prestigeUpgrades) {
-    // Ensure new keys exist
     var defaultPU = { ppFood: 0, ppSpeed: 0, ppHatch: 0, ppCap: 0, ppGem: 0, ppBoss: 0, queensForesight: 0, legacyVault: 0 };
     for (var k in defaultPU) {
       if (data.prestigeUpgrades[k] !== undefined) {
@@ -471,14 +497,12 @@ function loadGameData(data) {
   if (data.speedBoostTimer !== undefined) state.speedBoostTimer = data.speedBoostTimer;
   if (data.luckyHourTimer !== undefined) state.luckyHourTimer = data.luckyHourTimer;
   if (data.defenseBannerTimer !== undefined) state.defenseBannerTimer = data.defenseBannerTimer;
-  // Engagement systems
   if (data.buildQueue) state.buildQueue = data.buildQueue;
   else state.buildQueue = [];
   state.prestigeGoal = data.prestigeGoal || null;
   state.prestigeGoalSelected = data.prestigeGoalSelected || false;
   state.eventChoices = [];
   state.eventChoiceActive = false;
-  // New systems
   if (data.researchBonuses) {
     var defaults = {
       foodPerTrip: 0, soldierHealth: 0, soldierDamage: 0, discoveryChance: 0,
@@ -503,21 +527,16 @@ function loadGameData(data) {
   state._bossMilestonesHit = {};
   state._bossRetreatTimer = 0;
   state._lastBossStealTime = 0;
-  // Territory load
   if (data.territoriesClaimed) state.territoriesClaimed = data.territoriesClaimed;
   if (data.territoryUnlockCost !== undefined) state.territoryUnlockCost = data.territoryUnlockCost;
   if (data.territoryPassiveTimer !== undefined) state.territoryPassiveTimer = data.territoryPassiveTimer;
   if (data.territoryScoutQueue) state.territoryScoutQueue = data.territoryScoutQueue;
-  // Legendary defeated
   if (data.legendaryDefeated) state.legendaryDefeated = data.legendaryDefeated;
-  // Dynamic event timer
   if (data.dynamicEventTimer !== undefined) state.dynamicEventTimer = data.dynamicEventTimer;
-  // Prestige rework flags
   if (data._royalCooldownReduction !== undefined) state._royalCooldownReduction = data._royalCooldownReduction;
   if (data._pendingTerritoryClaim !== undefined) state._pendingTerritoryClaim = data._pendingTerritoryClaim;
   if (data._pendingLegacyScout !== undefined) state._pendingLegacyScout = data._pendingLegacyScout;
   state.xpToNext = Math.floor(40 * Math.pow(1.15, state.level - 1));
-  // Force recalculate food cap to fix stuck at 30 from legacy saves
   recalculateHatchTime();
   updateEggLayTime();
   recalculateFoodCap();
@@ -529,16 +548,16 @@ var _debugFoodLog = [];
 function addFood(amount, wp, source) {
   amount = Math.floor(amount);
   if (amount <= 0) return;
-  state.food = Math.min(state.food + amount, state.foodCap);
+  var newVal = Math.min(state.food + amount, state.foodCap);
+  // Use the setter, which will log large changes and update debug panel
+  state.food = newVal;
   state.lifetimeStats.totalFood = (state.lifetimeStats.totalFood || 0) + amount;
   updateDailyProgress('food300', amount);
 
-  // Track source
-  var src = source || 'unknown';
+  // Also track in debug log (even though setter does it for large, we keep for all)
+  var src = source || 'addFood';
   _debugFoodLog.unshift({ amt: amount, src: src, time: Date.now() });
   if (_debugFoodLog.length > 5) _debugFoodLog.length = 5;
-
-  // Update debug panel
   var panel = document.getElementById('debug-food');
   if (panel) {
     panel.style.display = 'block';
@@ -566,4 +585,4 @@ function addGems(amount) {
   state.totalGemsEarned += amount;
   state.lifetimeStats.totalGems = (state.lifetimeStats.totalGems || 0) + amount;
   showToast("+" + amount + "💎");
-    }
+  }
