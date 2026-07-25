@@ -418,7 +418,7 @@ function updateTerritoryResources(dt) {
       var foodPerWorker = state.researchBonuses.territoryCaravanBonus ? 3 : 2;
       var generation = terr.assignedWorkers * foodPerWorker;
       if (generation > 0) {
-        addFood(generation, null);
+        addFood(generation, null, "territory");
       }
       if (terr.assignedSoldiers > 0 && Math.random() < terr.assignedSoldiers * 0.01) {
         addGems(1);
@@ -558,7 +558,7 @@ function buyAscensionUpgrade(id) {
   saveGame();
 }
 
-// ----- Main loop (with all new systems integrated) -----
+// ----- Main loop (with build queue and surge fix) -----
 var eLC = 0, sC = 0, cLP = 0, storageUpdateCounter = 0, achCheckAccumulator = 0, workerRebalanceAccumulator = 0, tutorialCheckAccumulator = 0, animFrameId = null;
 var vwFoodAccum = 0;
 
@@ -610,9 +610,10 @@ function startGameLoop() {
 
       if (state.earlyGameBoost > 0) { state.earlyGameBoost -= dt; if (state.earlyGameBoost <= 0) { state.earlyGameBoost = 0; updateEggLayTime(); } }
 
+      // ===== BUILD QUEUE PROCESSING =====
       if (state.buildQueue.length > 0) {
         var currentBuild = state.buildQueue[0];
-        var buildSpeed = 1 + (typeof getBuilderBuildSpeedBonus === 'function' ? getBuilderBuildSpeedBonus() : 0);
+        var buildSpeed = 1;
         currentBuild.timeRemaining -= dt * buildSpeed;
         if (currentBuild.timeRemaining <= 0) {
           constructBuilding(currentBuild.type);
@@ -732,7 +733,6 @@ function startGameLoop() {
           state.surgeActive = true; surgeBtn.style.display = "block";
           qgLight.intensity = 6; qgSphere.material.emissiveIntensity = 3;
           state.surgeTimer = BAL.surgeIntervalMin + Math.random() * (BAL.surgeIntervalMax - BAL.surgeIntervalMin);
-          // Force hide after surgeDuration seconds
           clearTimeout(state._surgeTimeout);
           state._surgeTimeout = setTimeout(function() {
             if (state.surgeActive) {
