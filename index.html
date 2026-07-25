@@ -21,7 +21,7 @@ html, body {
   -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
 }
 
-/* (all CSS unchanged – I'm including the full style block for completeness) */
+/* (all original CSS – I'm including the full style block for completeness) */
 /* ============================================================
    PARALLAX BACKGROUND LAYERS – REALISTIC CAVE (ENHANCED)
    ============================================================ */
@@ -653,15 +653,6 @@ canvas { display: block; width: 100%; height: 100%; }
 .shop-category-tabs button.active {
   background: rgba(200,150,80,0.3); color: #fff; border-color: #ffb700;
 }
-
-/* ===== LIVE ERROR DISPLAY ===== */
-#live-error {
-  position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
-  background: rgba(200,0,0,0.95); color: #fff; padding: 18px 24px;
-  border-radius: 12px; font-size: 14px; font-weight: 700;
-  z-index: 300; display: none; max-width: 90vw;
-  text-align: center; box-shadow: 0 0 20px rgba(255,0,0,0.5);
-}
 </style>
 </head>
 <body>
@@ -888,36 +879,33 @@ canvas { display: block; width: 100%; height: 100%; }
 <!-- Background music -->
 <audio id="bg-music" loop style="display:none"></audio>
 
-<!-- ===== LIVE ERROR DISPLAY ===== -->
-<div id="live-error"></div>
-
 <!-- ============================================================
    SCRIPTS – EXACT DEPENDENCY ORDER
    ============================================================ -->
-<script src="js/three.min.js?v=final"></script>
-<script src="js/config.js?v=final"></script>
-<script src="js/state.js?v=final"></script>
-<script src="js/terrain.js?v=final"></script>
-<script src="js/discoveries.js?v=final"></script>
-<script src="js/goals.js?v=final"></script>
-<script src="js/biomes.js?v=final"></script>
-<script src="js/antclasses.js?v=final"></script>
-<script src="js/rivals.js?v=final"></script>
-<script src="js/royalchamber.js?v=final"></script>
-<script src="js/scouts.js?v=final"></script>
-<script src="js/buildings.js?v=final"></script>
-<script src="js/research.js?v=final"></script>
-<script src="js/bosses.js?v=final"></script>
-<script src="js/camera.js?v=final"></script>
-<script src="js/chambers.js?v=final"></script>
-<script src="js/ants.js?v=final"></script>
-<script src="js/enemies.js?v=final"></script>
-<script src="js/combat.js?v=final"></script>
-<script src="js/abilities.js?v=final"></script>
-<script src="js/main.js?v=final"></script>
-<script src="js/ui.js?v=final"></script>
-<script src="js/shop.js?v=final"></script>
-<script src="js/upgrades.js?v=final"></script>
+<script src="js/three.min.js?v=clean"></script>
+<script src="js/config.js?v=clean"></script>
+<script src="js/state.js?v=clean"></script>
+<script src="js/terrain.js?v=clean"></script>
+<script src="js/discoveries.js?v=clean"></script>
+<script src="js/goals.js?v=clean"></script>
+<script src="js/biomes.js?v=clean"></script>
+<script src="js/antclasses.js?v=clean"></script>
+<script src="js/rivals.js?v=clean"></script>
+<script src="js/royalchamber.js?v=clean"></script>
+<script src="js/scouts.js?v=clean"></script>
+<script src="js/buildings.js?v=clean"></script>
+<script src="js/research.js?v=clean"></script>
+<script src="js/bosses.js?v=clean"></script>
+<script src="js/camera.js?v=clean"></script>
+<script src="js/chambers.js?v=clean"></script>
+<script src="js/ants.js?v=clean"></script>
+<script src="js/enemies.js?v=clean"></script>
+<script src="js/combat.js?v=clean"></script>
+<script src="js/abilities.js?v=clean"></script>
+<script src="js/main.js?v=clean"></script>
+<script src="js/ui.js?v=clean"></script>
+<script src="js/shop.js?v=clean"></script>
+<script src="js/upgrades.js?v=clean"></script>
 
 <!-- ============================================================
    INLINE SCRIPTS
@@ -971,16 +959,6 @@ window.openSettings = function() {
   document.getElementById('settings-panel').style.display = 'flex';
 };
 
-// ===== CATCH ALL ERRORS AND DISPLAY THEM ON SCREEN =====
-window.onerror = function(msg, url, line) {
-  var el = document.getElementById('live-error');
-  if (el) {
-    el.style.display = 'block';
-    el.innerHTML = '❌ ERROR<br><b>' + msg + '</b><br><small>' + (url||'') + ' (line ' + line + ')</small>';
-  }
-  return true;
-};
-
 // ===== VISUAL VIEWPORT RESIZE =====
 function handleViewportResize() {
   if (typeof renderer === 'undefined' || typeof camera === 'undefined') return;
@@ -1000,11 +978,9 @@ if (window.visualViewport) {
   var msg = document.getElementById('loading-msg');
 
   if (typeof THREE === 'undefined') {
-    var el = document.getElementById('live-error');
-    if (el) {
-      el.style.display = 'block';
-      el.textContent = '❌ Three.js not loaded – check js/three.min.js';
-    }
+    ld.innerHTML = '<div class="title">⚠️ Failed to load</div>'+
+      '<div style="color:#ffaaaa;max-width:280px;text-align:center">Three.js not loaded. Check js/three.min.js</div>'+
+      '<button onclick="location.reload()" style="margin-top:10px;padding:8px 16px;background:#d6a85a;border:none;border-radius:8px;color:#1a1208;font-weight:700;cursor:pointer">Retry</button>';
     return;
   }
 
@@ -1012,11 +988,11 @@ if (window.visualViewport) {
     GameSettings.init();
     AudioManager.init();
   } catch(e) {
-    var el = document.getElementById('live-error');
-    if (el) {
-      el.style.display = 'block';
-      el.textContent = '❌ Startup error: ' + e.toString();
-    }
+    ld.style.display = 'flex';
+    ld.innerHTML = '<div class="title">⚠️ Startup Error</div>'+
+      '<div style="color:#ffaaaa;max-width:280px;text-align:center;font-size:12px">'+
+      e.toString()+'</div>'+
+      '<button onclick="location.reload()" style="margin-top:10px;padding:8px 16px;background:#d6a85a;border:none;border-radius:8px;color:#1a1208;font-weight:700;cursor:pointer">Retry</button>';
     return;
   }
 
@@ -1030,4 +1006,4 @@ if (window.visualViewport) {
 })();
 </script>
 </body>
-   </html>
+                              </html>
