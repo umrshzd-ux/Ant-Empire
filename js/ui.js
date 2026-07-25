@@ -806,10 +806,10 @@ function refreshTerritoriesUI() {
 }
 
 // =============================================
-//  BUTTON SETUP (UPDATED – CALLS initDOMRefs FIRST)
+//  BUTTON SETUP – UPDATED (initDOMRefs called)
 // =============================================
 function setupButtons() {
-  initDOMRefs();  // <-- CRITICAL: populates all global DOM variables
+  initDOMRefs();  // <-- THIS LINE ENABLES THE BUTTONS
 
   buildPanel = document.getElementById("build-panel"); upgradePanel = document.getElementById("upgrade-panel"); shopPanel = document.getElementById("shop-panel");
   achPanel = document.getElementById("achievements-panel"); evoPanel = document.getElementById("evolution-panel"); ppPanel = document.getElementById("prestige-shop-panel");
@@ -1021,4 +1021,4 @@ function buyUpgrade(type) {
   showToast(msg);
   refreshUpgradeUI();
   refreshHUD();
-}
+      }
