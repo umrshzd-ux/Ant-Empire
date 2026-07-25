@@ -172,7 +172,7 @@ window.newColony = function(slot) {
   state.lastSaveTime = Date.now();   // prevent offline progress
   state.lastTime = performance.now();
 
-  // RESET GLOBAL ACCUMULATORS (fixes instant food fill)
+  // RESET GLOBAL ACCUMULATORS
   vwFoodAccum = 0;
   eLC = 0; sC = 0; cLP = 0;
   storageUpdateCounter = 0; achCheckAccumulator = 0;
@@ -186,6 +186,7 @@ window.newColony = function(slot) {
   var bossName = document.getElementById('boss-name'); if (bossName) bossName.style.display = 'none';
   var bossBar = document.getElementById('boss-health-bar'); if (bossBar) bossBar.style.display = 'none';
   var summonBtn = document.getElementById('summon-btn'); if (summonBtn) summonBtn.style.display = 'none';
+  var surgeBtn = document.getElementById('surge-btn'); if (surgeBtn) surgeBtn.style.display = 'none';
   // skip offline check entirely
   setTimeout(function() {
     checkDailyLogin();
@@ -273,7 +274,7 @@ window.loadSlot = function(slot) {
   state.lastSaveTime = Date.now();
   state.lastTime = performance.now();
 
-  // RESET GLOBAL ACCUMULATORS (prevents carry‑over)
+  // RESET GLOBAL ACCUMULATORS
   vwFoodAccum = 0;
   eLC = 0; sC = 0; cLP = 0;
   storageUpdateCounter = 0; achCheckAccumulator = 0;
@@ -294,6 +295,8 @@ window.loadSlot = function(slot) {
   if (bossBar) bossBar.style.display = 'none';
   var summonBtn = document.getElementById('summon-btn');
   if (summonBtn) summonBtn.style.display = 'none';
+  var surgeBtn = document.getElementById('surge-btn');
+  if (surgeBtn) surgeBtn.style.display = 'none';
 
   setTimeout(function() {
     checkDailyLogin();
@@ -571,7 +574,7 @@ function buyAscensionUpgrade(id) {
   saveGame();
 }
 
-// ----- Main loop (with all new systems integrated) -----
+// ----- Main loop (with build queue and surge fix) -----
 var eLC = 0, sC = 0, cLP = 0, storageUpdateCounter = 0, achCheckAccumulator = 0, workerRebalanceAccumulator = 0, tutorialCheckAccumulator = 0, animFrameId = null;
 var vwFoodAccum = 0;
 
@@ -587,6 +590,8 @@ function startGameLoop() {
   if (bossBar) bossBar.style.display = 'none';
   var summonBtn = document.getElementById('summon-btn');
   if (summonBtn) summonBtn.style.display = 'none';
+  var surgeBtn = document.getElementById('surge-btn');
+  if (surgeBtn) surgeBtn.style.display = 'none';
 
   if (!activeGoals || !activeGoals.immediate) initGoals();
 
@@ -617,15 +622,16 @@ function startGameLoop() {
         if (vwFoodAccum >= 1) {
           var addNow = Math.floor(vwFoodAccum);
           vwFoodAccum -= addNow;
-          addFood(addNow);
+          addFood(addNow, null, "virtual");
         }
       }
 
       if (state.earlyGameBoost > 0) { state.earlyGameBoost -= dt; if (state.earlyGameBoost <= 0) { state.earlyGameBoost = 0; updateEggLayTime(); } }
 
+      // ===== BUILD QUEUE PROCESSING =====
       if (state.buildQueue.length > 0) {
         var currentBuild = state.buildQueue[0];
-        var buildSpeed = 1 + (typeof getBuilderBuildSpeedBonus === 'function' ? getBuilderBuildSpeedBonus() : 0);
+        var buildSpeed = 1;
         currentBuild.timeRemaining -= dt * buildSpeed;
         if (currentBuild.timeRemaining <= 0) {
           constructBuilding(currentBuild.type);
@@ -702,7 +708,7 @@ function startGameLoop() {
           updateSummonButton();
         }
       } else {
-        summonBtn.style.display = "none";
+        if (summonBtn) summonBtn.style.display = "none";
         updateBoss(dt);
       }
       updateBossTimer();
@@ -742,14 +748,15 @@ function startGameLoop() {
       if (!state.surgeActive) {
         state.surgeTimer -= dt;
         if (state.surgeTimer <= 0) {
-          state.surgeActive = true; surgeBtn.style.display = "block";
+          state.surgeActive = true;
+          if (surgeBtn) surgeBtn.style.display = "block";
           qgLight.intensity = 6; qgSphere.material.emissiveIntensity = 3;
           state.surgeTimer = BAL.surgeIntervalMin + Math.random() * (BAL.surgeIntervalMax - BAL.surgeIntervalMin);
           clearTimeout(state._surgeTimeout);
           state._surgeTimeout = setTimeout(function() {
             if (state.surgeActive) {
               state.surgeActive = false;
-              surgeBtn.style.display = "none";
+              if (surgeBtn) surgeBtn.style.display = "none";
             }
           }, BAL.surgeDuration * 1000);
         }
@@ -802,11 +809,31 @@ function startGameLoop() {
       }
     } catch(e) { console.error('Enemy flee error:', e); }
 
-    // ---- Eggs ----
+    // ---- Eggs (FIXED – no more virtual worker spam) ----
     try {
       eLC += dt;
-      if (eLC >= state.eggLayTime && eggMs.length < 30) { eLC = 0; layEgg(); }
-      else if (eLC >= state.eggLayTime) { eLC = 0; state.eggs++; state.virtualWorkers++; }
+      if (eLC >= state.eggLayTime && eggMs.length < 30) {
+        eLC = 0;
+        layEgg();
+      } else if (eLC >= state.eggLayTime) {
+        eLC = 0;
+        state.workerCount++;
+        state.totalHatched++;
+        state.lifetimeStats.totalHatched++;
+        updateEggLayTime();
+        // Only go virtual if the render limit is truly reached
+        var renderedWorkers = 0;
+        for (var i = 0; i < workers.length; i++) {
+          if (workers[i].rendered && !workers[i].isSoldier && !workers[i].isScout) renderedWorkers++;
+        }
+        if (renderedWorkers >= BAL.maxRenderedAnts) {
+          state.virtualWorkers++;
+        } else {
+          var nw = createWorker(false, null, true);
+          if (nw) workers.push(nw);
+        }
+        AudioManager.sfx.hatch();
+      }
 
       for (var i = eggMs.length - 1; i >= 0; i--) {
         var egg = eggMs[i];
@@ -1012,6 +1039,8 @@ function initGameSystems() {
   if (bossBar) bossBar.style.display = 'none';
   var summonBtn = document.getElementById('summon-btn');
   if (summonBtn) summonBtn.style.display = 'none';
+  var surgeBtn = document.getElementById('surge-btn');
+  if (surgeBtn) surgeBtn.style.display = 'none';
 }
 
 // Prestige function
@@ -1038,6 +1067,7 @@ function performPrestige(ppGain) {
   barracksSoldiers = []; if (researchChamberGroup) { disposeMesh(researchChamberGroup); scene.remove(researchChamberGroup); researchChamberGroup = null; }
   if (state.currentBoss) { disposeMesh(state.currentBoss.mesh); scene.remove(state.currentBoss.mesh); state.currentBoss = null; }
   state.bossActive = false; var bossName = document.getElementById('boss-name'); if (bossName) bossName.style.display = 'none'; var bossBar = document.getElementById('boss-health-bar'); if (bossBar) bossBar.style.display = 'none';
+  var surgeBtn = document.getElementById('surge-btn'); if (surgeBtn) surgeBtn.style.display = 'none';
   for (var i = 0; i < PRESTIGE_MILESTONES.length; i++) { var m = PRESTIGE_MILESTONES[i]; if (state.prestigeCount >= m.prestige) m.effect(); }
   if (state.researchBonuses.queensLegacy) {
     state.workerCount += 2;
@@ -1104,6 +1134,7 @@ function performAscension(apGain) {
   showToast("⬆️ Ascension complete! +1 AP, permanent multipliers active!"); refreshHUD(); checkAchievements(); saveGame();
   var cfg = ZONE_CONFIG.forest; scene.background = new THREE.Color(cfg.bg); scene.fog = new THREE.Fog(cfg.fog, 20, 80);
   var zoneDisp = document.getElementById('zone-display'); if (zoneDisp) zoneDisp.textContent = cfg.label;
+  var surgeBtn = document.getElementById('surge-btn'); if (surgeBtn) surgeBtn.style.display = 'none';
 }
 
 function clearAllMeshes() {
@@ -1123,6 +1154,7 @@ function clearAllMeshes() {
   if (state.currentBoss) { disposeMesh(state.currentBoss.mesh); scene.remove(state.currentBoss.mesh); state.currentBoss = null; }
   var bossName = document.getElementById('boss-name'); if (bossName) bossName.style.display = 'none';
   var bossBar = document.getElementById('boss-health-bar'); if (bossBar) bossBar.style.display = 'none';
+  var surgeBtn = document.getElementById('surge-btn'); if (surgeBtn) surgeBtn.style.display = 'none';
 }
 
 // ===== INITIALISATION (call order matters) =====
