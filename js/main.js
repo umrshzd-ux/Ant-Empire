@@ -418,7 +418,7 @@ function updateTerritoryResources(dt) {
       var foodPerWorker = state.researchBonuses.territoryCaravanBonus ? 3 : 2;
       var generation = terr.assignedWorkers * foodPerWorker;
       if (generation > 0) {
-        addFood(generation, null, "territory");
+        addFood(generation, null);
       }
       if (terr.assignedSoldiers > 0 && Math.random() < terr.assignedSoldiers * 0.01) {
         addGems(1);
@@ -558,7 +558,7 @@ function buyAscensionUpgrade(id) {
   saveGame();
 }
 
-// ----- Main loop (with build queue and surge fix) -----
+// ----- Main loop (with all new systems integrated) -----
 var eLC = 0, sC = 0, cLP = 0, storageUpdateCounter = 0, achCheckAccumulator = 0, workerRebalanceAccumulator = 0, tutorialCheckAccumulator = 0, animFrameId = null;
 var vwFoodAccum = 0;
 
@@ -604,16 +604,15 @@ function startGameLoop() {
         if (vwFoodAccum >= 1) {
           var addNow = Math.floor(vwFoodAccum);
           vwFoodAccum -= addNow;
-          addFood(addNow, null, "virtual");
+          addFood(addNow);
         }
       }
 
       if (state.earlyGameBoost > 0) { state.earlyGameBoost -= dt; if (state.earlyGameBoost <= 0) { state.earlyGameBoost = 0; updateEggLayTime(); } }
 
-      // ===== BUILD QUEUE PROCESSING =====
       if (state.buildQueue.length > 0) {
         var currentBuild = state.buildQueue[0];
-        var buildSpeed = 1;
+        var buildSpeed = 1 + (typeof getBuilderBuildSpeedBonus === 'function' ? getBuilderBuildSpeedBonus() : 0);
         currentBuild.timeRemaining -= dt * buildSpeed;
         if (currentBuild.timeRemaining <= 0) {
           constructBuilding(currentBuild.type);
@@ -733,13 +732,7 @@ function startGameLoop() {
           state.surgeActive = true; surgeBtn.style.display = "block";
           qgLight.intensity = 6; qgSphere.material.emissiveIntensity = 3;
           state.surgeTimer = BAL.surgeIntervalMin + Math.random() * (BAL.surgeIntervalMax - BAL.surgeIntervalMin);
-          clearTimeout(state._surgeTimeout);
-          state._surgeTimeout = setTimeout(function() {
-            if (state.surgeActive) {
-              state.surgeActive = false;
-              surgeBtn.style.display = "none";
-            }
-          }, BAL.surgeDuration * 1000);
+          setTimeout(function() { if (state.surgeActive) { state.surgeActive = false; surgeBtn.style.display = "none"; } }, BAL.surgeDuration * 1000);
         }
       }
       if (state.deadSoldiers > 0) { state.soldierRespawnTimer -= dt; if (state.soldierRespawnTimer <= 0) respawnSoldier(); }
