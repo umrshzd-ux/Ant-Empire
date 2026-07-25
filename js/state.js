@@ -542,4 +542,4 @@ function addGems(amount) {
   state.totalGemsEarned += amount;
   state.lifetimeStats.totalGems = (state.lifetimeStats.totalGems || 0) + amount;
   showToast("+" + amount + "💎");
-    }
+}
