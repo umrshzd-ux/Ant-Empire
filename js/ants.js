@@ -80,7 +80,20 @@ function createWorker(golden, rareType, forceRender) {
   if (rareType) addLabel(mesh, rareType.emoji + " " + rareType.name, 0.9, false); else if (golden) addLabel(mesh, "🥇 Golden Worker", 0.9, false);
   var baseSpeed = getEffectiveWorkerSpeed(); var speedMult = 1; if (golden) speedMult = 2; if (rareType) speedMult = 1 + rareType.speedBonus;
   if (isNaN(baseSpeed)) baseSpeed = 1.0;
-  var w = { id: id, mesh: mesh, station: st, slotIndex: null, state: "TO_FOOD", path: pathToStation(st), pathIndex: 0, speed: baseSpeed * speedMult + Math.random() * 0.4, waitTimer: Math.random() * 1.5, carrying: false, foodIcon: null, eggIcon: null, targetScale: ws, rendered: true, personalOffset: (Math.random() - 0.5) * 0.6, isSoldier: false, isScout: false, carryingEgg: false, avoidTimer: 0, isGolden: golden || false, isRare: !!rareType, rareType: rareType, foodBonus: 0, _speedMult: speedMult, birthTimer: undefined, birthDuration: undefined, dropAnimTimer: undefined, lastState: "TO_FOOD", stateTimer: 0, tripDelivered: false };
+  var w = {
+    id: id, mesh: mesh, station: st, slotIndex: null,
+    state: "TO_FOOD", path: pathToStation(st), pathIndex: 0,
+    speed: baseSpeed * speedMult + Math.random() * 0.4,
+    waitTimer: Math.random() * 1.5, carrying: false, foodIcon: null, eggIcon: null,
+    targetScale: ws, rendered: true,
+    personalOffset: (Math.random() - 0.5) * 0.6,
+    isSoldier: false, isScout: false, carryingEgg: false, avoidTimer: 0,
+    isGolden: golden || false, isRare: !!rareType, rareType: rareType,
+    foodBonus: 0, _speedMult: speedMult,
+    birthTimer: undefined, birthDuration: undefined, dropAnimTimer: undefined,
+    lastState: "TO_FOOD", stateTimer: 0, tripDelivered: false,
+    stuckPos: mesh.position.clone()   // position when the current state started
+  };
   if (isNaN(w.speed)) w.speed = 1.0;
   if (state.rallyActive) w.speed *= BAL.rallySpeedMultiplier;
   var cls = typeof assignClass === 'function' ? assignClass("worker") : null;
@@ -95,14 +108,15 @@ function createEggTransport() { if (state.chambers.nursery.count === 0) return f
 function applyWorkerSpeed(w) { var base = getEffectiveWorkerSpeed(); if (state.rallyActive) base *= BAL.rallySpeedMultiplier; if (w.isGolden) base *= 2; if (w.isRare && w.rareType) base *= (1 + w.rareType.speedBonus); w.speed = base + Math.random() * 0.4; if (isNaN(w.speed)) w.speed = 1.0; }
 function applyAllWorkerSpeeds() { for (var i = 0; i < workers.length; i++) applyWorkerSpeed(workers[i]); }
 
-// ---------- WORKER UPDATE WITH WATCHDOG AND RECOVERY ----------
+// ---------- WORKER UPDATE WITH SMART WATCHDOG AND RECOVERY ----------
 function updateWorker(w, dt) {
   if (!w.rendered || w.isSoldier || w.isScout || !w.mesh) return;
 
-  // --- Watchdog: if stuck in same state too long, force reset ---
+  // --- Watchdog: if stuck in same state for 8 s and barely moved, force reset ---
   if (w.state === w.lastState) {
     w.stateTimer += dt;
-    if (w.stateTimer > 8) {
+    var moved = w.mesh.position.distanceTo(w.stuckPos);
+    if (w.stateTimer > 8 && moved < 0.5) {
       // Recover frozen worker
       if (w.slotIndex !== null) releaseStationSlot(w.station, w.slotIndex);
       w.carrying = false;
@@ -114,12 +128,14 @@ function updateWorker(w, dt) {
       setPathTarget(w, "FOOD");
       w.stateTimer = 0;
       w.lastState = "TO_FOOD";
+      w.stuckPos = w.mesh.position.clone();
       console.warn("Worker " + w.id + " auto‑recovered (stuck in " + w.lastState + ")");
-      return; // let the next frame pick up the new state
+      return; // next frame picks up the new state
     }
   } else {
     w.lastState = w.state;
     w.stateTimer = 0;
+    w.stuckPos = w.mesh.position.clone();
   }
 
   // Auto‑repair NaN position (if something broke it)
