@@ -92,7 +92,7 @@ function createWorker(golden, rareType, forceRender) {
     foodBonus: 0, _speedMult: speedMult,
     birthTimer: undefined, birthDuration: undefined, dropAnimTimer: undefined,
     lastState: "TO_FOOD", stateTimer: 0, tripDelivered: false,
-    stuckPos: mesh.position.clone()   // position when the current state started
+    stuckPos: mesh.position.clone()
   };
   if (isNaN(w.speed)) w.speed = 1.0;
   if (state.rallyActive) w.speed *= BAL.rallySpeedMultiplier;
@@ -112,6 +112,12 @@ function applyAllWorkerSpeeds() { for (var i = 0; i < workers.length; i++) apply
 function updateWorker(w, dt) {
   if (!w.rendered || w.isSoldier || w.isScout || !w.mesh) return;
 
+  // ===== ONE‑LINE TEST: skip first waypoint if it's at the nest =====
+  if (w.pathIndex === 0 && w.path[w.pathIndex]) {
+    var d0 = w.mesh.position.distanceTo(w.path[w.pathIndex]);
+    if (d0 < 0.5) { w.pathIndex = 1; }          // jump past the identical first point
+  }
+
   // --- Watchdog: if stuck in same state for 8 s and barely moved, force reset ---
   if (w.state === w.lastState) {
     w.stateTimer += dt;
@@ -129,8 +135,7 @@ function updateWorker(w, dt) {
       w.stateTimer = 0;
       w.lastState = "TO_FOOD";
       w.stuckPos = w.mesh.position.clone();
-      console.warn("Worker " + w.id + " auto‑recovered (stuck in " + w.lastState + ")");
-      return; // next frame picks up the new state
+      return;
     }
   } else {
     w.lastState = w.state;
@@ -168,7 +173,7 @@ function updateWorker(w, dt) {
       }
       return;
     }
-    if (dist < 0.0001) return; // prevent NaN
+    if (dist < 0.0001) return;
     var step = Math.min(w.speed * dt, dist);
     p.x += (dx/dist)*step; p.y += (dy/dist)*step; p.z += (dz/dist)*step;
     w.mesh.rotation.y = Math.atan2(dx, dz);
@@ -260,7 +265,6 @@ function updateWorker(w, dt) {
     w.pathIndex = 0;
     w.state = "TO_FOOD";
     setPathTarget(w, "FOOD");
-    console.warn("Worker " + w.id + " path was empty – resetting");
     return;
   }
 
