@@ -1,4 +1,4 @@
-// ===== ANT MODEL, WORKERS, SOLDIERS, QUEEN, EGGS (SAFE MODE) =====
+// ===== ANT MODEL, WORKERS, SOLDIERS, QUEEN, EGGS =====
 // Scouts moved to scouts.js, ant classes integrated.
 
 var NEST_SAFE_RADIUS = 6.0;
@@ -80,7 +80,7 @@ function createWorker(golden, rareType, forceRender) {
   if (rareType) addLabel(mesh, rareType.emoji + " " + rareType.name, 0.9, false); else if (golden) addLabel(mesh, "🥇 Golden Worker", 0.9, false);
   var baseSpeed = getEffectiveWorkerSpeed(); var speedMult = 1; if (golden) speedMult = 2; if (rareType) speedMult = 1 + rareType.speedBonus;
   if (isNaN(baseSpeed)) baseSpeed = 1.0;
-  var w = { id: id, mesh: mesh, station: st, slotIndex: null, state: "TO_FOOD", path: pathToStation(st), pathIndex: 0, speed: baseSpeed * speedMult + Math.random() * 0.4, waitTimer: Math.random() * 1.5, carrying: false, foodIcon: null, eggIcon: null, targetScale: ws, rendered: true, personalOffset: (Math.random() - 0.5) * 0.6, isSoldier: false, isScout: false, carryingEgg: false, avoidTimer: 0, isGolden: golden || false, isRare: !!rareType, rareType: rareType, foodBonus: 0, _speedMult: speedMult, birthTimer: undefined, birthDuration: undefined, dropAnimTimer: undefined };
+  var w = { id: id, mesh: mesh, station: st, slotIndex: null, state: "TO_FOOD", path: pathToStation(st), pathIndex: 0, speed: baseSpeed * speedMult + Math.random() * 0.4, waitTimer: Math.random() * 1.5, carrying: false, foodIcon: null, eggIcon: null, targetScale: ws, rendered: true, personalOffset: (Math.random() - 0.5) * 0.6, isSoldier: false, isScout: false, carryingEgg: false, avoidTimer: 0, isGolden: golden || false, isRare: !!rareType, rareType: rareType, foodBonus: 0, _speedMult: speedMult, birthTimer: undefined, birthDuration: undefined, dropAnimTimer: undefined, lastState: "TO_FOOD", stateTimer: 0, tripDelivered: false };
   if (isNaN(w.speed)) w.speed = 1.0;
   if (state.rallyActive) w.speed *= BAL.rallySpeedMultiplier;
   var cls = typeof assignClass === 'function' ? assignClass("worker") : null;
@@ -95,9 +95,32 @@ function createEggTransport() { if (state.chambers.nursery.count === 0) return f
 function applyWorkerSpeed(w) { var base = getEffectiveWorkerSpeed(); if (state.rallyActive) base *= BAL.rallySpeedMultiplier; if (w.isGolden) base *= 2; if (w.isRare && w.rareType) base *= (1 + w.rareType.speedBonus); w.speed = base + Math.random() * 0.4; if (isNaN(w.speed)) w.speed = 1.0; }
 function applyAllWorkerSpeeds() { for (var i = 0; i < workers.length; i++) applyWorkerSpeed(workers[i]); }
 
-// ---------- SAFE WORKER UPDATE ----------
+// ---------- WORKER UPDATE WITH WATCHDOG AND RECOVERY ----------
 function updateWorker(w, dt) {
   if (!w.rendered || w.isSoldier || w.isScout || !w.mesh) return;
+
+  // --- Watchdog: if stuck in same state too long, force reset ---
+  if (w.state === w.lastState) {
+    w.stateTimer += dt;
+    if (w.stateTimer > 8) {
+      // Recover frozen worker
+      if (w.slotIndex !== null) releaseStationSlot(w.station, w.slotIndex);
+      w.carrying = false;
+      w.carryingEgg = false;
+      w.waitTimer = 0;
+      w.avoidTimer = 0;
+      w.tripDelivered = false;
+      w.state = "TO_FOOD";
+      setPathTarget(w, "FOOD");
+      w.stateTimer = 0;
+      w.lastState = "TO_FOOD";
+      console.warn("Worker " + w.id + " auto‑recovered (stuck in " + w.lastState + ")");
+      return; // let the next frame pick up the new state
+    }
+  } else {
+    w.lastState = w.state;
+    w.stateTimer = 0;
+  }
 
   // Auto‑repair NaN position (if something broke it)
   if (isNaN(w.mesh.position.x) || isNaN(w.mesh.position.y) || isNaN(w.mesh.position.z)) {
@@ -181,12 +204,50 @@ function updateWorker(w, dt) {
   if (w.dropAnimTimer !== undefined && w.dropAnimTimer > 0 && w.foodIcon) { w.dropAnimTimer -= dt; var t = 1 - Math.max(0, w.dropAnimTimer/0.4); w.foodIcon.position.y = 0.55 - t*0.5; w.foodIcon.scale.setScalar(Math.max(0, 1-t)); if (w.dropAnimTimer <= 0) { disposeMesh(w.foodIcon); w.mesh.remove(w.foodIcon); w.foodIcon = null; w.dropAnimTimer = undefined; } }
   if (w.waitTimer > 0) { w.waitTimer -= dt; return; }
 
-  // Compute food per trip – HARD CAPPED
-  var fpt = 3;  // <-- safe default, ignore all modifiers for now
-  if (w.state === "AT_FOOD") { releaseStationSlot(w.station, w.slotIndex); w.slotIndex = null; w.waitTimer = 0.5; w.carrying = true; w.state = "TO_NEST"; setPathTarget(w, "NEST"); return; }
-  if (w.state === "AT_NEST") { addFood(fpt, NP.clone(), "worker"); addStockpileCrumb(); storagePilesDirty = true; qgLight.intensity = 3; qgSphere.material.emissiveIntensity = 1.5; cLP = 1; w.carrying = false; w.dropAnimTimer = 0.4; w.waitTimer = 0.4; w.state = "TO_FOOD"; setPathTarget(w, "FOOD"); return; }
+  // Compute food per trip
+  var effectiveFood = getEffectiveFoodPerTrip(); var diminishedFood = Math.floor(effectiveFood * 0.4); if (diminishedFood < 1) diminishedFood = 1;
+  var fpt = (state.food > state.foodCap * 0.5 ? diminishedFood : effectiveFood) + (w.foodBonus || 0);
+  if (state.evolution.worker >= 1) fpt += EVOLUTION_TREE.worker.tiers[0].effect.foodBonus;
+  var cfg = getCurrentZoneConfig(); if (cfg) fpt += cfg.foodBonus;
 
-  var raw = w.path[w.pathIndex]; if (!raw) return;
+  if (w.state === "AT_FOOD") {
+    releaseStationSlot(w.station, w.slotIndex);
+    w.slotIndex = null;
+    w.waitTimer = 0.5;
+    w.carrying = true;
+    w.tripDelivered = false;          // new trip starts
+    w.state = "TO_NEST";
+    setPathTarget(w, "NEST");
+    return;
+  }
+  if (w.state === "AT_NEST") {
+    // Only deposit once per trip
+    if (!w.tripDelivered) {
+      addFood(fpt, NP.clone());
+      addStockpileCrumb();
+      storagePilesDirty = true;
+      qgLight.intensity = 3; qgSphere.material.emissiveIntensity = 1.5; cLP = 1;
+      w.tripDelivered = true;
+    }
+    w.carrying = false;
+    w.dropAnimTimer = 0.4;
+    w.waitTimer = 0.4;
+    w.state = "TO_FOOD";
+    setPathTarget(w, "FOOD");
+    return;
+  }
+
+  // --- Movement ---
+  var raw = w.path[w.pathIndex];
+  if (!raw) {
+    // Path corrupted – rebuild and reset
+    w.pathIndex = 0;
+    w.state = "TO_FOOD";
+    setPathTarget(w, "FOOD");
+    console.warn("Worker " + w.id + " path was empty – resetting");
+    return;
+  }
+
   var isF = w.pathIndex === w.path.length - 1;
   var target;
   if (isF) {
